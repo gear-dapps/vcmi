@@ -135,6 +135,11 @@ else()
 	add_definitions(-DVCMI_NO_EXTRA_VERSION)
 endif(ENABLE_GITVERSION)
 
+add_custom_target(
+    gear-client
+    COMMAND cargo build
+)
+
 # Precompiled header configuration
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 6.0 )
 	set(ENABLE_PCH OFF) # broken
@@ -396,6 +401,19 @@ if(NOT FORCE_BUNDLED_MINIZIP)
 		add_definitions(-DUSE_SYSTEM_MINIZIP)
 	endif()
 endif()
+
+
+include(FetchContent)
+
+set(CMAKE_EXPORT_COMPILE_COMMANDS true)
+
+
+FetchContent_Declare(
+    Corrosion
+    GIT_REPOSITORY https://github.com/corrosion-rs/corrosion.git
+    GIT_TAG master
+)
+FetchContent_MakeAvailable(Corrosion)
 
 find_package(SDL2 REQUIRED)
 find_package(SDL2_image REQUIRED)

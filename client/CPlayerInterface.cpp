@@ -75,6 +75,8 @@
 
 #include <SDL_events.h>
 
+#include "rusty_bridge/lib.h"
+
 // The macro below is used to mark functions that are called by client when game state changes.
 // They all assume that CPlayerInterface::pim mutex is locked.
 #define EVENT_HANDLER_CALLED_BY_CLIENT
@@ -252,6 +254,7 @@ void CPlayerInterface::initGameInterface(std::shared_ptr<Environment> ENV, std::
 }
 void CPlayerInterface::yourTurn()
 {
+	std::string fname = "";
 	EVENT_HANDLER_CALLED_BY_CLIENT;
 	{
 		boost::unique_lock<boost::mutex> lock(eventsM); //block handling events until interface is ready
@@ -264,6 +267,7 @@ void CPlayerInterface::yourTurn()
 
 		std::string prefix = settings["session"]["saveprefix"].String();
 		int frequency = static_cast<int>(settings["general"]["saveFrequency"].Integer());
+		
 		if (firstCall)
 		{
 			if(CSH->howManyPlayerInterfaces() == 1)
@@ -275,13 +279,15 @@ void CPlayerInterface::yourTurn()
 			{
 				int index = getLastIndex(prefix + "Newgame_");
 				index %= SAVES_COUNT;
-				cb->save("Saves/" + prefix + "Newgame_Autosave_" + std::to_string(index + 1));
+				fname = "Saves/" + prefix + "Newgame_Autosave_" + std::to_string(index + 1);
+				cb->save(fname);
 			}
 			firstCall = 0;
 		}
 		else if(frequency > 0 && cb->getDate() % frequency == 0)
 		{
-			LOCPLINT->cb->save("Saves/" + prefix + "Autosave_" + std::to_string(autosaveCount++ + 1));
+			fname = "Saves/" + prefix + "Autosave_" + std::to_string(autosaveCount++ + 1);
+			LOCPLINT->cb->save(fname);
 			autosaveCount %= 5;
 		}
 
@@ -306,6 +312,11 @@ void CPlayerInterface::yourTurn()
 	}
 
 	acceptTurn();
+
+	const std::string fullPath = VCMIDirs::get().userDataPath().string() + '/' + fname + ".vsgm1";
+	auto data = get_file_as_byte_vec(fullPath);
+	logGlobal->warn("User Save Full Path: %s", fullPath);
+	save_state_onchain(fname, data);
 }
 
 void CPlayerInterface::heroMoved(const TryMoveHero & details, bool verbose)

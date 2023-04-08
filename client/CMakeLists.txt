@@ -1,3 +1,6 @@
+corrosion_import_crate(MANIFEST_PATH rust_vcmi/Cargo.toml PROFILE release)
+corrosion_add_cxxbridge(rusty_bridge CRATE rust_vcmi MANIFEST_PATH rust_vcmi FILES lib.rs)
+
 set(client_SRCS
 	StdInc.cpp
 	../CCallback.cpp
@@ -356,7 +359,8 @@ if(ENABLE_SINGLE_APP_BUILD)
 	endif()
 endif()
 target_link_libraries(vcmiclient PRIVATE
-		${VCMI_LIB_TARGET} SDL2::SDL2 SDL2::Image SDL2::Mixer SDL2::TTF
+		${VCMI_LIB_TARGET} SDL2::SDL2 SDL2::Image SDL2::Mixer SDL2::TTF rusty_bridge
+		PUBLIC  -lXtst cairo -lgio-2.0 gobject-2.0 pthread m  glib-2.0 -lX11 -lpthread
 )
 
 if(ffmpeg_LIBRARIES)

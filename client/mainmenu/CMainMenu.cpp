@@ -58,6 +58,11 @@
 #include <SDL.h>
 #endif
 
+#include "rusty_bridge/lib.h"
+extern "C" {
+int32_t rusty_extern_c_integer();
+}
+
 namespace fs = boost::filesystem;
 
 std::shared_ptr<CMainMenu> CMM;
@@ -323,7 +328,8 @@ void CMainMenu::openLobby(ESelectionScreen screenType, bool host, const std::vec
 	CSH->screenType = screenType;
 	CSH->loadMode = loadMode;
 
-	GH.pushIntT<CSimpleJoinScreen>(host);
+	//GH.pushIntT<CSimpleJoinScreen>(host);
+	GH.pushIntT<CPrivateKeyScreen>();
 }
 
 void CMainMenu::openCampaignLobby(const std::string & campaignFileName)
@@ -337,7 +343,8 @@ void CMainMenu::openCampaignLobby(std::shared_ptr<CCampaignState> campaign)
 	CSH->resetStateForLobby(StartInfo::CAMPAIGN);
 	CSH->screenType = ESelectionScreen::campaignList;
 	CSH->campaignStateToSend = campaign;
-	GH.pushIntT<CSimpleJoinScreen>();
+	//GH.pushIntT<CSimpleJoinScreen>();
+	GH.pushIntT<CPrivateKeyScreen>();
 }
 
 void CMainMenu::openCampaignScreen(std::string name)
@@ -449,6 +456,57 @@ void CMultiPlayers::enterSelectionScreen()
 	name->String() = names[0];
 
 	CMainMenu::openLobby(screenType, host, &names, loadMode);
+}
+
+CPrivateKeyScreen::CPrivateKeyScreen() 
+{
+	// OBJ_CONSTRUCTION_CAPTURING_ALL_NO_DISPOSE;
+	// background = std::make_shared<CPicture>("MUDIALOG.bmp"); // address background
+	// pos = background->center(); //center, window has size of bg graphic (x,y = 396,278 w=232 h=212)
+
+	// textTitle = std::make_shared<CTextBox>("", Rect(20, 20, 205, 50), 0, FONT_BIG, ETextAlignment::CENTER, Colors::WHITE);
+	// inputPrivateKey = std::make_shared<CTextInput>(Rect(25, 68, 175, 16), background->getSurface());
+	// inputPassword = std::make_shared<CTextInput>(Rect(25, 115, 175, 16), background->getSurface());
+	// logGlobal->info("CPrivateKeyScreen::CPrivateKeyScreen()");
+	
+	// textTitle->setText("Enter Program ID:");
+	// inputPrivateKey->cb += std::bind(&CPrivateKeyScreen::onChange, this, _1);
+	// inputPassword->cb += std::bind(&CPrivateKeyScreen::onChange, this, _1);
+	// inputPrivateKey->setText("0x94cf9212edbe4e40278f165eeb250a7fd52c4e1835e2bb86421f7fb7423ffb59");
+	// buttonOk = std::make_shared<CButton>(Point(26, 142), "MUBCHCK.DEF", CGI->generaltexth->zelp[560], [this](){
+	// 	logGlobal->info("%s", inputPrivateKey->getText());
+	// 	auto programId = inputPrivateKey->getText();
+	// 	auto ec_contract_connecting = connect_to_contract(programId); 
+	// 	logGlobal->warn("Homm3 Smart Contract Connecting Error Code: %d", ec_contract_connecting);
+	// 	GH.pushIntT<CSimpleJoinScreen>();
+	// }, SDLK_RETURN);
+
+	// buttonCancel = std::make_shared<CButton>(Point(142, 142), "MUBCANC.DEF", CGI->generaltexth->zelp[561], std::bind(&CPrivateKeyScreen::leaveScreen, this), SDLK_ESCAPE);
+	// statusBar = CGStatusBar::create(std::make_shared<CPicture>(background->getSurface(), Rect(7, 186, 218, 18), 7, 186));	
+	// inputPrivateKey->giveFocus();
+	show_connection_dialog();
+}
+
+void CPrivateKeyScreen::leaveScreen()
+{
+	if(CSH->state == EClientState::CONNECTING)
+	{
+		textTitle->setText("Closing...");
+		CSH->state = EClientState::CONNECTION_CANCELLED;
+	}
+	else if(GH.listInt.size() && GH.listInt.front().get() == this)
+	{
+		close();
+	}
+}
+
+void CPrivateKeyScreen::onChange(const std::string & newText)
+{
+	if (inputPassword->getText().size() > 0)
+	{
+		inputPassword->setText(std::string(inputPassword->getText().size(), '*'));
+	}
+	buttonOk->block(inputPrivateKey->getText().empty() ||  inputPassword->getText().empty());
 }
 
 CSimpleJoinScreen::CSimpleJoinScreen(bool host)

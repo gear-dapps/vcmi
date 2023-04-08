@@ -337,6 +337,7 @@ void CClient::serialize(BinaryDeserializer & h, const int version)
 
 void CClient::save(const std::string & fname)
 {
+	logGlobal->warn("CClient::save(%s)", fname);
 	if(gs->curB)
 	{
 		logNetwork->error("Game cannot be saved during battle!");

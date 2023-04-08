@@ -174,6 +174,25 @@ public:
 	CSimpleJoinScreen(bool host = true);
 };
 
+class CPrivateKeyScreen : public WindowBase
+{
+	std::shared_ptr<CPicture> background;
+	std::shared_ptr<CTextBox> textTitle;
+	std::shared_ptr<CButton> buttonOk;
+	std::shared_ptr<CButton> buttonCancel;
+	std::shared_ptr<CGStatusBar> statusBar;
+	std::shared_ptr<CTextInput> inputPrivateKey;
+	std::shared_ptr<CTextInput> inputPassword;
+
+	void connectToServer();
+	void leaveScreen();
+	void onChange(const std::string & newText);
+	void connectThread(const std::string addr = "", const ui16 inputPort = 0);
+
+public:
+	CPrivateKeyScreen();
+};
+
 class CLoadingScreen : public CWindowObject
 {
 	boost::thread loadingThread;
