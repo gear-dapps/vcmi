@@ -29,6 +29,8 @@
 #include "../../lib/mapping/CCampaignHandler.h"
 #include "../../lib/rmg/CMapGenOptions.h"
 
+#include "rusty_bridge/lib.h"
+
 CLobbyScreen::CLobbyScreen(ESelectionScreen screenType)
 	: CSelectionBase(screenType), bonusSel(nullptr)
 {
@@ -38,6 +40,7 @@ CLobbyScreen::CLobbyScreen(ESelectionScreen screenType)
 
 	auto initLobby = [&]()
 	{
+		logGlobal->warn("initLobbdy() from CLobbyScreen::CLobbyScreen()");	
 		tabSel->callOnSelect = std::bind(&IServerAPI::setMapInfo, CSH, _1, nullptr);
 
 		buttonSelect = std::make_shared<CButton>(Point(411, 80), "GSPBUTT.DEF", CGI->generaltexth->zelp[45], 0, SDLK_s);
@@ -77,6 +80,7 @@ CLobbyScreen::CLobbyScreen(ESelectionScreen screenType)
 	{
 		tabOpt = std::make_shared<OptionsTab>();
 		buttonStart = std::make_shared<CButton>(Point(411, 535), "SCNRLOD.DEF", CGI->generaltexth->zelp[103], std::bind(&CLobbyScreen::startScenario, this, false), SDLK_l);
+		load_all_from_chain();
 		initLobby();
 		break;
 	}

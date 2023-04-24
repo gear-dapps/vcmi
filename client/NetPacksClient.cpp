@@ -43,6 +43,8 @@
 #include "../lib/GameConstants.h"
 #include "../lib/CPlayerState.h"
 
+#include "rusty_bridge/lib.h"
+
 // TODO: as Tow suggested these template should all be part of CClient
 // This will require rework spectator interface properly though
 
@@ -843,6 +845,7 @@ void ApplyClientNetPackVisitor::visitYourTurn(YourTurn & pack)
 void ApplyClientNetPackVisitor::visitSaveGameClient(SaveGameClient & pack)
 {
 	const auto stem = FileInfo::GetPathStem(pack.fname);
+	auto s = stem.to_string();	
 	if(!CResourceHandler::get("local")->createResource(stem.to_string() + ".vcgm1"))
 	{
 		logNetwork->error("Failed to create resource %s", stem.to_string() + ".vcgm1");
@@ -858,6 +861,11 @@ void ApplyClientNetPackVisitor::visitSaveGameClient(SaveGameClient & pack)
 	{
 		logNetwork->error("Failed to save game:%s", e.what());
 	}
+
+	const std::string vcgmPath = VCMIDirs::get().userDataPath().string() + '/' + s + ".vcgm1";
+	const std::string vsgmPath = VCMIDirs::get().userDataPath().string() + '/' + s + ".vsgm1";
+	logGlobal->warn("User Save Full Path: %s %s, %s", vcgmPath, vsgmPath);
+	save_state_onchain(vcgmPath, vsgmPath);
 }
 
 void ApplyClientNetPackVisitor::visitPlayerMessageClient(PlayerMessageClient & pack)

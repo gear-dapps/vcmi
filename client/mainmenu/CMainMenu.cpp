@@ -58,6 +58,8 @@
 #include <SDL.h>
 #endif
 
+ #include "rusty_bridge/lib.h"
+
 namespace fs = boost::filesystem;
 
 std::shared_ptr<CMainMenu> CMM;
@@ -322,7 +324,11 @@ void CMainMenu::openLobby(ESelectionScreen screenType, bool host, const std::vec
 	CSH->resetStateForLobby(screenType == ESelectionScreen::newGame ? StartInfo::NEW_GAME : StartInfo::LOAD_GAME, names);
 	CSH->screenType = screenType;
 	CSH->loadMode = loadMode;
-
+	const auto isConnected = show_connection_dialog(static_cast<SelectionScreen>(screenType));
+	logGlobal->warn("openLobby Gear Proxy: %d", isConnected);
+	if (!isConnected) {
+    	GH.pushIntT<CSimpleJoinScreen>(host);
+	}
 	GH.pushIntT<CSimpleJoinScreen>(host);
 }
 
