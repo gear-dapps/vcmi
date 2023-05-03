@@ -26,6 +26,7 @@ use ipfs_client::IpfsClient;
 use ipfs_client::IpfsCommand;
 use ipfs_client::IpfsReply;
 use logic::Logic;
+use std::sync::atomic::Ordering::Relaxed;
 use tauri::Manager;
 use tracing::info;
 use tracing_core::LevelFilter;
@@ -74,7 +75,6 @@ fn main() {
             let app_handle = app.handle();
             let main_window = app_handle.get_window("main").unwrap();
             let log_window = app_handle.get_window("log").unwrap();
-            // let load_game_window = app_handle.get_window("load_game").unwrap();
 
             let filter = LevelFilter::INFO;
             let stdout_log = tracing_subscriber::fmt::layer().with_filter(filter);

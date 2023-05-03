@@ -1,4 +1,7 @@
-use std::fmt::{self};
+use std::{
+    fmt::{self},
+    sync::atomic::AtomicBool,
+};
 
 use tauri::Window;
 use tracing::{
@@ -49,16 +52,16 @@ where
         match event.metadata().level() {
             &Level::DEBUG => {
                 // self.main_window.emit("debug", string).unwrap();
-            },
+            }
             &Level::INFO => {
                 self.window.emit("log", string).unwrap();
-            },
+            }
             &Level::WARN => {
                 self.window.emit("warn", string).unwrap();
             }
             &Level::ERROR => {
                 self.window.emit("error", string).unwrap();
-            },
+            }
             _ => {}
         }
     }

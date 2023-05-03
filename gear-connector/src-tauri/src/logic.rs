@@ -1,8 +1,6 @@
-use std::{
-    sync::{
-        atomic::{AtomicBool, Ordering::Relaxed},
-        Arc,
-    },
+use std::sync::{
+    atomic::{AtomicBool, Ordering::Relaxed},
+    Arc,
 };
 
 use crossbeam_channel::{Receiver, RecvTimeoutError, Sender};
@@ -77,11 +75,10 @@ impl Logic {
         while !self.need_stop.load(Relaxed) {
             self.process_gui_command();
             self.process_vcmi_command().await;
-            // futures::future::join(self.process_ipfs_reply(), self.process_gear_reply()).await;
         }
     }
 
-    fn show_connection_dialog(&self) {
+    fn connect_to_gear(&self) {
         self.main_window.center().unwrap();
         self.main_window.show().unwrap();
         self.main_window.set_focus().unwrap();
@@ -108,25 +105,6 @@ impl Logic {
         let archive_name = format!("{filename}");
 
         tracing::info!("Archive len: {}", compressed_archive.len());
-        // let file = OpenOptions::new()
-        //     .write(true)
-        //     .create(true)
-        //     .read(true)
-        //     .truncate(true)
-        //     .open(&archive_name)
-        //     .unwrap();
-        // let mut tar = Builder::new(BufWriter::new(file));
-        // let mut header = Header::new_gnu();
-
-        // tar.append_data(&mut header, &archive_name, compressed_archive.as_slice())
-        //     .unwrap();
-
-        // let mut buffer = tar.into_inner().unwrap();
-        // buffer.flush().unwrap(); //.into_inner().unwrap();
-
-        // let mut tar_data = Vec::new();
-        // let mut tar_file = File::open(&archive_name).unwrap();
-        // tar_file.read_to_end(&mut tar_data).unwrap();
 
         let command = IpfsCommand::UploadData {
             filename,
@@ -217,7 +195,7 @@ impl Logic {
     async fn process_vcmi_command(&self) {
         match self.vcmi_command_receiver.recv_timeout(RECV_TIMEOUT) {
             Ok(vcmi_command) => match vcmi_command {
-                VcmiCommand::ShowConnectDialog => self.show_connection_dialog(),
+                VcmiCommand::Connect => self.connect_to_gear(),
                 VcmiCommand::Save {
                     filename,
                     compressed_archive,
@@ -239,96 +217,6 @@ impl Logic {
             }
         }
     }
-
-    // async fn process_ipfs_reply(&self) {
-    //     match self.ipfs_reply_receiver.recv_timeout(RECV_TIMEOUT) {
-    //         Ok(reply) => match reply {
-    //             IpfsReply::Uploaded { name, hash, size } => {
-    //                 let action = Action::Save(GameState { name, hash, size });
-    //                 self.gear_command_sender
-    //                     .send(Command::SendAction(action))
-    //                     .expect("Error in another thread");
-    //             }
-    //             IpfsReply::Downloaded { data } => {
-    //                 let reply = VcmiReply::Loaded(VcmiState {
-    //                     name: "her".to_string(),
-    //                     data,
-    //                 });
-    //                 self.vcmi_reply_sender
-    //                     .send(reply)
-    //                     .expect("Error in another thread")
-    //             }
-    //         },
-    //         Err(e) if e == RecvTimeoutError::Timeout => {}
-    //         Err(e) => {
-    //             tracing::error!("Error in another thread: {}", e);
-    //             self.need_stop.store(true, Relaxed);
-    //         }
-    //     }
-    // }
-
-    // fn process_event(&self, event: Event) {
-    //     match event {
-    //         Event::Loaded(game_state) => {
-    //             tracing::info!("State Successfully loaded");
-    //             match game_state {
-    //                 Some(game_state) => self
-    //                     .ipfs_command_sender
-    //                     .send(IpfsCommand::Download {
-    //                         hash: game_state,
-    //                     })
-    //                     .expect("Error in another thread"),
-    //                 None => {}
-    //             };
-    //         }
-    //         Event::Saved => tracing::info!("State Successfully saved"),
-    //     }
-    // }
-
-    // async fn process_gear_reply(&self) {
-    //     match self.gear_reply_receiver.recv_timeout(RECV_TIMEOUT) {
-    //         Ok(reply) => {
-    //             // let msg = format!("{:?}", reply);
-    //             match reply {
-    //                 Reply::Connected => {
-    //                     // self.main_window.app_handle().emit_all("connection_view", String::new()).unwrap();
-    //                     self.main_window
-    //                         .emit_all("connection_view", String::new())
-    //                         .unwrap();
-    //                     // self.main_window
-    //                     //     .set_size(Size::Physical(tauri::PhysicalSize {
-    //                     //         width: 300,
-    //                     //         height: 300,
-    //                     //     }))
-    //                     //     .unwrap();
-    //                     self.main_window.center().unwrap();
-    //                     self.main_window.move_window(Position::BottomRight).unwrap();
-    //                     self.vcmi_reply_sender
-    //                         .send(VcmiReply::ShowedDialog)
-    //                         .expect("Error in another thread");
-
-    //                     self.vcmi_reply_sender
-    //                         .send(VcmiReply::Connected)
-    //                         .expect("Panic in another thread");
-    //                 }
-    //                 Reply::NotConnected => self
-    //                     .vcmi_reply_sender
-    //                     .send(VcmiReply::CanceledDialog)
-    //                     .expect("Panic in another thread"),
-    //                 Reply::ProgramNotFound { program_id } => {
-    //                     self.main_window.emit("not_found", program_id).unwrap();
-    //                 }
-    //                 Reply::Event(event) => self.process_event(event),
-    //             }
-    //             // self.main_window.emit("log", msg).unwrap();
-    //         }
-    //         Err(e) if e == RecvTimeoutError::Timeout => {}
-    //         Err(e) => {
-    //             tracing::error!("Error in another thread: {}", e);
-    //             self.need_stop.store(true, Relaxed);
-    //         }
-    //     }
-    // }
 
     fn connect(&self, _address: String, program_id: String, account_id: String, password: String) {
         let address = WSAddress::new("ws://localhost", 9944);
@@ -382,6 +270,7 @@ impl Logic {
                         self.vcmi_reply_sender
                             .send(VcmiReply::CanceledDialog)
                             .expect("Panic in another thread");
+                        self.need_stop.store(true, Relaxed);
                     }
                     GuiCommand::ExpandLog => {
                         let size = self.log_window.inner_size().unwrap();

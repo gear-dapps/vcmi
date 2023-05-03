@@ -1,3 +1,4 @@
+use core::panic;
 use std::{
     fs::File,
     sync::{
@@ -79,7 +80,11 @@ impl IpfsClient {
                                         name: result.name,
                                         hash: result.hash,
                                     })
-                                    .expect("Send error");
+                                    .unwrap_or_else(|e| {
+                                        need_stop_clone.store(true, Relaxed);
+                                        panic!("{e}");
+                                        }
+                                    );
                             }
                             IpfsCommand::DownloadTar { hash } => {
                                 match ipfs_client
@@ -92,7 +97,11 @@ impl IpfsClient {
                                 {
                                     Ok(data) => ipfs_reply_sender
                                         .send(IpfsReply::Downloaded { data })
-                                        .expect("Error in another thread"),
+                                        .unwrap_or_else(|e| {
+                                                need_stop_clone.store(true, Relaxed);
+                                                panic!("{e}");
+                                            }
+                                        ),
                                     Err(error) => panic!("Game State Is Not Found in ipfs: {}", error),
                                 }
                             }
@@ -103,7 +112,11 @@ impl IpfsClient {
                                     .await
                                     .add(data)
                                     .await
-                                    .expect("Can't upload to ipfs");
+                                    .unwrap_or_else(|e| {
+                                        need_stop_clone.store(true, Relaxed);
+                                        panic!("{e}");
+                                        }
+                                    );
                                 tracing::info!(
                                     "File {filename} uploaded to IPFS. Hash: {}, Name: {}, Size: {}",
                                     result.hash,
@@ -115,7 +128,11 @@ impl IpfsClient {
                                         name: result.name,
                                         hash: result.hash,
                                     })
-                                    .expect("Send error");
+                                    .unwrap_or_else(|e| {
+                                        need_stop_clone.store(true, Relaxed);
+                                        panic!("{e}");
+                                        }
+                                    );
                             },
                             IpfsCommand::DownloadData { hash } => {
                                 match ipfs_client
@@ -128,7 +145,11 @@ impl IpfsClient {
                                 {
                                     Ok(data) => ipfs_reply_sender
                                         .send(IpfsReply::Downloaded { data })
-                                        .expect("Error in another thread"),
+                                        .unwrap_or_else(|e| {
+                                            need_stop_clone.store(true, Relaxed);
+                                            panic!("{e}");
+                                            }
+                                        ),
                                     Err(error) => panic!("Game State Is Not Found in ipfs: {}", error),
                                 }
                             },
@@ -137,6 +158,7 @@ impl IpfsClient {
                     Err(error) => {
                         tracing::error!("Error in another thread: {}", error);
                         need_stop_clone.store(true, Relaxed);
+                        panic!("Error in another thread: {}", error);
                     }
                 }
             }

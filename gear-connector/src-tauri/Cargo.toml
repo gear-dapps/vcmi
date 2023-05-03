@@ -36,13 +36,16 @@ ipfs-api-backend-hyper = "0.6"
 tar = "0.4"
 
 # gear related
-gmeta = { git = "https://github.com/gear-tech/gear.git", branch = "testnet" }
-gstd = { git = "https://github.com/gear-tech/gear.git", branch = "testnet" }
+gmeta = { git = "https://github.com/gear-tech/gear.git", rev = "5c685d0f15c412ab6ee019ceaf7ce084426dfb68" }
+gstd = { git = "https://github.com/gear-tech/gear.git", rev = "5c685d0f15c412ab6ee019ceaf7ce084426dfb68" }
 scale-info = { version = "2", default-features = false }
 parity-scale-codec = { version = "3", default-features = false }
-gclient = { git = "https://github.com/gear-tech/gear.git" }
+gclient = { git = "https://github.com/gear-tech/gear.git", rev = "5c685d0f15c412ab6ee019ceaf7ce084426dfb68" }
 
 gear-connector-api = { path = "../../gear-connector-api" }
+
+[profile.release]
+panic = "abort"
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem

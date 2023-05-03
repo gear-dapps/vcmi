@@ -8,7 +8,7 @@ use std::{
 
 use crate::program_io::{Action, Event, GameState};
 use crossbeam_channel::{Receiver, RecvTimeoutError, Sender};
-use gclient::{EventProcessor, GearApi, WSAddress};
+use gclient::{EventListener, EventProcessor, GearApi, WSAddress};
 use gmeta::{Decode, Encode};
 use gstd::ActorId;
 
@@ -39,6 +39,7 @@ pub enum GearReply {
 
 pub struct GearConnection {
     client: GearApi,
+    listener: EventListener,
     program_id: [u8; 32],
 }
 
@@ -81,7 +82,15 @@ impl GearClient {
                     }
                 }
 
-                std::thread::sleep(std::time::Duration::from_millis(100));
+                if let Some(connection) = self.gear_connection.write().unwrap().as_mut() {
+                    if let Err(e) = connection.listener.blocks_running().await {
+                        self.gear_reply_sender
+                            .send(GearReply::NotConnected(format!("{e}")))
+                            .expect("Cant' send");
+                    }
+                }
+
+                std::thread::sleep(std::time::Duration::from_millis(1));
             }
         });
     }
@@ -91,7 +100,12 @@ impl GearClient {
             .gear_connection
             .read()
             .expect("Error in another thread");
-        if let Some(GearConnection { client, program_id }) = guard.as_ref() {
+        if let Some(GearConnection {
+            client,
+            program_id,
+            listener: _,
+        }) = guard.as_ref()
+        {
             let program_id = (*program_id).into();
             let saved_games: Vec<(ActorId, GameState)> = client
                 .read_state(program_id)
@@ -113,6 +127,7 @@ impl GearClient {
         if let Some(GearConnection {
             client,
             program_id: _,
+            listener: _,
         }) = guard.as_ref()
         {
             let free_balance = client.free_balance(client.account_id()).await.unwrap();
@@ -125,12 +140,17 @@ impl GearClient {
     }
 
     async fn process_action(&self, action: Action) {
-        let guard = self
+        let mut guard = self
             .gear_connection
-            .read()
+            .write()
             .expect("Error in another thread");
         tracing::debug!("Process action {:?}", action);
-        if let Some(GearConnection { client, program_id }) = guard.as_ref() {
+        if let Some(GearConnection {
+            client,
+            program_id,
+            ref mut listener,
+        }) = guard.as_mut()
+        {
             let pid = *program_id;
             let program_id = pid.into();
             let client_guard = client;
@@ -146,8 +166,6 @@ impl GearClient {
                 .await
                 .expect("Error at sending Action::Save");
             tracing::info!("Send Action to Gear: {:?}", action);
-
-            let mut listener = client.subscribe().await.unwrap();
 
             assert!(listener
                 .message_processed(message_id)
@@ -205,6 +223,7 @@ impl GearClient {
                             let gear_connection = GearConnection {
                                 client: client.clone(),
                                 program_id,
+                                listener: client.subscribe().await.unwrap(),
                             };
                             guard.replace(gear_connection);
 

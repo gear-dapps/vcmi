@@ -861,11 +861,6 @@ void ApplyClientNetPackVisitor::visitSaveGameClient(SaveGameClient & pack)
 	{
 		logNetwork->error("Failed to save game:%s", e.what());
 	}
-
-	const std::string vcgmPath = VCMIDirs::get().userDataPath().string() + '/' + s + ".vcgm1";
-	const std::string vsgmPath = VCMIDirs::get().userDataPath().string() + '/' + s + ".vsgm1";
-	logGlobal->warn("User Save Full Path: %s %s, %s", vcgmPath, vsgmPath);
-	save_state_onchain(vcgmPath, vsgmPath);
 }
 
 void ApplyClientNetPackVisitor::visitPlayerMessageClient(PlayerMessageClient & pack)

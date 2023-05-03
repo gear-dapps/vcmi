@@ -22,11 +22,23 @@
 #include "../lib/spells/ISpellMechanics.h"
 #include "../lib/serializer/Cast.h"
 
+#include "../lib/filesystem/FileInfo.h"
+#include "../lib/VCMIDirs.h"
+#include "rusty_bridge/lib.h"
+
 void ApplyGhNetPackVisitor::visitSaveGame(SaveGame & pack)
 {
+	const std::string stem = FileInfo::GetPathStem(pack.fname).to_string();
+	
 	gh.save(pack.fname);
 	logGlobal->info("Game has been saved as %s", pack.fname);
 	result = true;
+	
+	const std::string vcgmPath = VCMIDirs::get().userDataPath().string() + '/' + stem + ".vcgm1";
+	const std::string vsgmPath = VCMIDirs::get().userDataPath().string() + '/' + stem + ".vsgm1";
+	logGlobal->warn("User Save Full Path: %s %s, %s", stem, vcgmPath, vsgmPath);
+	auto result = save_state_onchain(vcgmPath, vsgmPath);
+	logGlobal->warn("result = %d", result);
 }
 
 void ApplyGhNetPackVisitor::visitEndTurn(EndTurn & pack)

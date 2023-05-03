@@ -12,7 +12,7 @@ pub struct VcmiSavedGame {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum VcmiCommand {
-    ShowConnectDialog,
+    Connect,
     ShowLoadGameDialog,
     Save {
         filename: String,
