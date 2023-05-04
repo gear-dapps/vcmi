@@ -8,7 +8,7 @@ use crossbeam_channel::{Receiver, RecvTimeoutError, Sender};
 use gclient::WSAddress;
 use gear_connector_api::{VcmiCommand, VcmiReply, VcmiSavedGame};
 use gstd::ActorId;
-use tauri::{PhysicalSize, Size, Window};
+use tauri::{PhysicalSize, Size, Window, LogicalSize};
 use tauri_plugin_positioner::{Position, WindowExt};
 
 use crate::{
@@ -218,9 +218,9 @@ impl Logic {
         }
     }
 
-    fn connect(&self, _address: String, program_id: String, account_id: String, password: String) {
-        let address = WSAddress::new("ws://localhost", 9944);
-        // let address = WSAddress::new("wss://rpc-node.gear-tech.io", 9944);
+    fn connect(&self, address: String, program_id: String, account_id: String, password: String) {
+        // let address = WSAddress::new("ws://localhost", 9944);
+        let address = WSAddress::new(address, 443);
         self.gear_command_sender
             .send(GearCommand::ConnectToNode {
                 address,
@@ -238,7 +238,7 @@ impl Logic {
                 self.main_window.hide().unwrap();
                 self.log_window.show().unwrap();
 
-                self.log_window.move_window(Position::BottomRight).unwrap();
+                self.log_window.move_window(Position::TopRight).unwrap();
                 self.vcmi_reply_sender
                     .send(VcmiReply::ConnectDialogShowed)
                     .expect("Error in another thread");
@@ -273,18 +273,19 @@ impl Logic {
                         self.need_stop.store(true, Relaxed);
                     }
                     GuiCommand::ExpandLog => {
-                        let size = self.log_window.inner_size().unwrap();
-                        const EXPANDED_SIZE: u32 = 600;
-                        let height = match size.height == EXPANDED_SIZE {
-                            true => 150,
-                            false => EXPANDED_SIZE,
-                        };
-                        let width = size.width;
-                        self.log_window
-                            .set_size(Size::Physical(PhysicalSize::new(width, height)))
-                            .unwrap();
+                        self.log_window.set_size(Size::Logical(LogicalSize::new(0.3, 1.0))).unwrap();
+                        // let size = self.log_window.inner_size().unwrap();
+                        // const EXPANDED_SIZE: u32 = 600;
+                        // let height = match size.height == EXPANDED_SIZE {
+                        //     true => 150,
+                        //     false => EXPANDED_SIZE,
+                        // };
+                        // let width = size.width;
+                        // self.log_window
+                        //     .set_size(Size::Physical(PhysicalSize::new(width, height)))
+                        //     .unwrap();
                         std::thread::sleep(std::time::Duration::from_millis(1));
-                        self.log_window.move_window(Position::BottomRight).unwrap();
+                        self.log_window.move_window(Position::TopRight).unwrap();
                     }
                 }
             }

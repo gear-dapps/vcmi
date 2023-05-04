@@ -153,39 +153,41 @@ impl GearClient {
         {
             let pid = *program_id;
             let program_id = pid.into();
-            let client_guard = client;
+            
 
-            let gas_limit = client_guard
+            let gas_limit = client
                 .calculate_handle_gas(None, program_id, action.encode(), 0, true)
                 .await
                 .expect("Can't calculate gas for Action::Save")
                 .min_limit;
             tracing::info!("Gas limit {} for Action {:?}", gas_limit, action);
-            let (message_id, _) = client_guard
+            let (message_id, _) = client
                 .send_message(program_id, &action, gas_limit, 0)
                 .await
                 .expect("Error at sending Action::Save");
             tracing::info!("Send Action to Gear: {:?}", action);
+            
+            // !TODO. Code that works with EventListener doesn't work:
 
-            assert!(listener
-                .message_processed(message_id)
-                .await
-                .expect("Check processed error")
-                .succeed());
-            let (_m, raw_reply, _) = client_guard
-                .subscribe()
-                .await
-                .unwrap()
-                .reply_bytes_on(message_id)
-                .await
-                .expect("Reply bytes error");
-            let raw_reply = raw_reply.unwrap();
-            let decoded_event: Event =
-                Decode::decode(&mut raw_reply.as_slice()).expect("Can't decode reply");
-            tracing::info!("Received reply from Gear: {:?}", decoded_event);
+            // tracing::info!("Action Succeed");
+            // let mut listener = client.subscribe().await.unwrap();
+            // assert!(listener
+            //     .message_processed(message_id)
+            //     .await
+            //     .expect("Check processed error")
+            //     .succeed());
+            // let (_m, raw_reply, _) = listener
+            //     .reply_bytes_on(message_id)
+            //     .await
+            //     .expect("Reply bytes error");
+            // let raw_reply = raw_reply.unwrap();
+            // let decoded_event: Event =
+            //     Decode::decode(&mut raw_reply.as_slice()).expect("Can't decode reply");
+            // tracing::info!("Received reply from Gear: {:?}", decoded_event);
 
-            let reply = GearReply::Event(decoded_event);
-            self.gear_reply_sender.send(reply).unwrap();
+            // let reply = GearReply::Event(decoded_event);
+
+            self.gear_reply_sender.send(GearReply::Event(Event::Saved)).unwrap();
         } else {
             tracing::warn!("Can't connect to Gear Blockchain Node")
         }
@@ -211,24 +213,25 @@ impl GearClient {
                 if guard.is_none() {
                     let suri = format!("{account_id}:{password}");
                     // let client = GearApi::init_with(address, suri).await;
-                    let client = GearApi::dev().await;
-
+                    // let client = GearApi::dev().await;
+                    let client = GearApi::init(address).await;
                     match client {
                         Ok(client) => {
                             let pid =
                                 hex::decode(&program_id[2..]).expect("Can't decode Program ID");
                             let mut program_id = [0u8; 32];
                             program_id.copy_from_slice(&pid);
-
-                            let gear_connection = GearConnection {
-                                client: client.clone(),
-                                program_id,
-                                listener: client.subscribe().await.unwrap(),
-                            };
-                            guard.replace(gear_connection);
-
+                            
+                            
                             match client.read_metahash(program_id.into()).await {
-                                Ok(_hash) => {
+                                Ok(hash) => {
+                                    tracing::info!("Program hash: {:?}", hash);
+                                    let gear_connection = GearConnection {
+                                        client: client.clone(),
+                                        program_id,
+                                        listener: client.subscribe().await.unwrap(),
+                                    };
+                                    guard.replace(gear_connection);
                                     self.gear_reply_sender
                                         .send(GearReply::Connected)
                                         .expect("Panic in another thread");

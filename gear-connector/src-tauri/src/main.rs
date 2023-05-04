@@ -84,13 +84,13 @@ fn main() {
             let subscriber = Registry::default().with(stdout_log).with(my_subscriber);
             tracing::subscriber::set_global_default(subscriber).unwrap();
 
-            main_window.hide().unwrap();
-            log_window.hide().unwrap();
+            // main_window.hide().unwrap();
+            // log_window.hide().unwrap();
 
             main_window
                 .set_size(tauri::Size::Physical(tauri::PhysicalSize {
-                    width: 780,
-                    height: 585,
+                    width: 800,
+                    height: 600,
                 }))
                 .unwrap();
             main_window.center().unwrap();

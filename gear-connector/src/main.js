@@ -61,3 +61,20 @@ await listen('alert', (event) => {
 
   document.getElementById("connection-message").innerText = "Program not found. Program ID:\n" + programId
 })
+
+
+const dropdownItems = document.querySelectorAll('.dropdown-item');
+const dropdownButton = document.querySelector('.dropdown-toggle');
+
+let activeItem = null;
+
+dropdownItems.forEach(item => {
+  item.addEventListener('click', () => {
+    if (activeItem) {
+      activeItem.classList.remove('active');
+    }
+    item.classList.add('active');
+    dropdownButton.textContent = item.textContent;
+    activeItem = item;
+  });
+});
