@@ -49,8 +49,9 @@
         "title": "gear-online",
         "label": "main",
         "url": "index.html",
-        "width": 640,
-        "height": 480
+        "width": 800,
+        "height": 600,
+        "visible": false
       },
       {
         "transparent": true,
@@ -63,20 +64,7 @@
         "label": "log",
         "url": "connection_view.html",
         "width": 580,
-        "height": 150
-      },
-      {
-        "transparent": true,
-        "decorations": false,
-        "fullscreen": false,
-        "center": false,
-        "visible": false,
-        "resizable": true,
-        "title": "gear-online",
-        "label": "load_game",
-        "url": "load.html",
-        "width": 640,
-        "height": 480
+        "height": 800
       }
     ]
   }
