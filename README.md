@@ -8,7 +8,7 @@
 1. Download contract from https://github.com/gear-dapps/homm3
 2. Upload contract .wasm file with IDEA to https://idea.gear-tech.io/programs?node=wss%3A%2F%2Ftestnet.vara.rs
 
-## Game
+## Game (for Ubuntu https://ubuntu.com/download/desktop)
 1. Clone this repository
 2. Install needed dependencies for tauri gui framework  
 
