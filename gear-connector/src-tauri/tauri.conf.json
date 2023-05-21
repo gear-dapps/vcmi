@@ -47,11 +47,10 @@
         "center": true,
         "resizable": true,
         "title": "gear-online",
-        "label": "main",
-        "url": "index.html",
-        "width": 800,
-        "height": 600,
-        "visible": false
+        "label": "lobby",
+        "url": "lobby.html",
+        "width": 1024,
+        "height": 768
       },
       {
         "transparent": true,

@@ -3,6 +3,7 @@
 
 pub mod gear_client;
 pub mod ipfs_client;
+pub mod lobby;
 pub mod logic;
 pub mod program_io;
 pub mod utils;
@@ -25,6 +26,7 @@ use gstd::FromStr;
 use ipfs_client::IpfsClient;
 use ipfs_client::IpfsCommand;
 use ipfs_client::IpfsReply;
+use lobby::LobbyClient;
 use logic::Logic;
 use std::sync::atomic::Ordering::Relaxed;
 use tauri::Manager;
@@ -42,8 +44,10 @@ use utils::MainWindowSubscriber;
 
 #[derive(Debug)]
 pub enum GuiCommand {
-    ConnectToNode {
-        address: String,
+    Connect {
+        lobby_address: String,
+        username: String,
+        node_address: String,
         program_id: String,
         account_id: String,
         password: String,
@@ -64,6 +68,9 @@ fn main() {
     let (ipfs_command_sender, ipfs_command_receiver) = bounded::<IpfsCommand>(1);
     let (ipfs_reply_sender, ipfs_reply_receiver) = bounded::<IpfsReply>(1);
 
+    let (lobby_command_sender, lobby_command_receiver) = bounded::<lobby::LobbyCommand>(1);
+    let (lobby_reply_sender, lobby_reply_receiver) = bounded::<lobby::LobbyReply>(1);
+
     let need_stop = Arc::new(AtomicBool::new(false));
     let need_stop_clone = need_stop.clone();
 
@@ -73,7 +80,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![connect, skip, expand_log])
         .setup(|app| {
             let app_handle = app.handle();
-            let main_window = app_handle.get_window("main").unwrap();
+            let main_window = app_handle.get_window("lobby").unwrap();
             let log_window = app_handle.get_window("log").unwrap();
 
             let filter = LevelFilter::INFO;
@@ -87,12 +94,12 @@ fn main() {
             // main_window.hide().unwrap();
             // log_window.hide().unwrap();
 
-            main_window
-                .set_size(tauri::Size::Physical(tauri::PhysicalSize {
-                    width: 800,
-                    height: 600,
-                }))
-                .unwrap();
+            // main_window
+            //     .set_size(tauri::Size::Physical(tauri::PhysicalSize {
+            //         width: 780,
+            //         height: 585,
+            //     }))
+            //     .unwrap();
             main_window.center().unwrap();
             let address = SocketAddr::from_str("127.0.0.1:6666").unwrap();
             tauri::async_runtime::spawn(async move {
@@ -116,7 +123,7 @@ fn main() {
             });
 
             let need_stop = need_stop_clone.clone();
-            let logic = Logic::new(
+            let mut logic = Logic::new(
                 need_stop.clone(),
                 gear_command_sender,
                 gear_reply_receiver,
@@ -125,6 +132,8 @@ fn main() {
                 ipfs_reply_receiver,
                 ipfs_command_sender,
                 gui_command_receiver,
+                lobby_command_sender,
+                lobby_reply_receiver,
                 main_window,
                 log_window,
             );
@@ -133,10 +142,15 @@ fn main() {
                 logic.run().await;
             });
 
+            let need_stop = need_stop_clone.clone();
             std::thread::spawn(move || {
                 let gear_client =
                     GearClient::new(need_stop_clone, gear_command_receiver, gear_reply_sender);
                 gear_client.run()
+            });
+
+            std::thread::spawn(move || {
+                let lobby = LobbyClient::new(need_stop, lobby_command_receiver, lobby_reply_sender);
             });
 
             Ok(())
@@ -147,16 +161,21 @@ fn main() {
 
 #[tauri::command]
 async fn connect(
-    address: String,
+    lobby_address: String,
+    username: String,
+    node_address: String,
     account_id: String,
     program_id: String,
     password: String,
     gui_sender: tauri::State<'_, Sender<GuiCommand>>,
 ) -> Result<(), String> {
     info!(
-        "Received Connect from js: Address: {address}, ProgramID: {program_id}, AccountID: {account_id}");
-    let cmd = GuiCommand::ConnectToNode {
-        address,
+        "Received Connect from js: LobbyAddress: {lobby_address}, Username: {username}, NodeAddress: {node_address}, ProgramID: {program_id}, AccountID: {account_id}");
+
+    let cmd = GuiCommand::Connect {
+        lobby_address,
+        username,
+        node_address,
         account_id,
         program_id,
         password,
@@ -182,3 +201,6 @@ async fn expand_log(gui_sender: tauri::State<'_, Sender<GuiCommand>>) -> Result<
 
     Ok(())
 }
+
+#[tauri::command]
+async fn join_room() {}

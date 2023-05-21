@@ -14,6 +14,7 @@ use tauri_plugin_positioner::{Position, WindowExt};
 use crate::{
     gear_client::{GearCommand, GearReply, RECV_TIMEOUT},
     ipfs_client::{IpfsCommand, IpfsReply},
+    lobby::{LobbyClient, LobbyCommand, LobbyReply},
     program_io::{Action, ArchiveDescription, Event, GameState},
     GuiCommand,
 };
@@ -40,6 +41,8 @@ pub struct Logic {
     ipfs_reply_receiver: Receiver<IpfsReply>,
     ipfs_command_sender: Sender<IpfsCommand>,
     gui_command_receiver: Receiver<GuiCommand>,
+    lobby_command_sender: Sender<LobbyCommand>,
+    lobby_reply_receiver: Receiver<LobbyReply>,
     main_window: Window,
     log_window: Window,
 }
@@ -54,6 +57,9 @@ impl Logic {
         ipfs_reply_receiver: Receiver<IpfsReply>,
         ipfs_command_sender: Sender<IpfsCommand>,
         gui_command_receiver: Receiver<GuiCommand>,
+        lobby_command_sender: Sender<LobbyCommand>,
+        lobby_reply_receiver: Receiver<LobbyReply>,
+
         main_window: Window,
         log_window: Window,
     ) -> Self {
@@ -66,14 +72,16 @@ impl Logic {
             ipfs_reply_receiver,
             ipfs_command_sender,
             gui_command_receiver,
+            lobby_command_sender,
+            lobby_reply_receiver,
             main_window,
             log_window,
         }
     }
 
-    pub async fn run(&self) {
+    pub async fn run(&mut self) {
         while !self.need_stop.load(Relaxed) {
-            self.process_gui_command();
+            self.process_gui_command().await;
             self.process_vcmi_command().await;
         }
     }
@@ -251,18 +259,29 @@ impl Logic {
         }
     }
 
-    fn process_gui_command(&self) {
+    fn connect_to_lobby(&mut self, address: String, username: String) {
+        self.lobby_command_sender
+            .send(LobbyCommand::Connect(address))
+            .expect("Send error");
+        self.lobby_command_sender
+            .send(LobbyCommand::Greeting(4u8, username, String::new())).expect("Send Error")
+    }
+
+    fn process_gui_command(&mut self) {
         match self.gui_command_receiver.recv_timeout(RECV_TIMEOUT) {
             Ok(gui_command) => {
                 tracing::debug!("Process Gui Command: {:?}", gui_command);
                 match gui_command {
-                    GuiCommand::ConnectToNode {
-                        address,
+                    GuiCommand::Connect {
+                        lobby_address,
+                        username,
+                        node_address,
                         program_id,
                         password,
                         account_id,
                     } => {
-                        self.connect(address, program_id, account_id, password);
+                        self.connect_to_lobby(lobby_address, username);
+                        // self.connect_to_node(node_address, program_id, account_id, password);
                     }
                     GuiCommand::Cancel => {
                         // main_window.set_fullscreen(true).unwrap();

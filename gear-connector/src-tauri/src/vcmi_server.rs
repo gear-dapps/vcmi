@@ -96,7 +96,6 @@ impl VcmiServer {
                     }
                     Err(e) => tracing::error!("{}", e),
                 }
-                // let stream = Arc::new(RwLock::new(stream));
             }
         });
 
