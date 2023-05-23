@@ -80,98 +80,49 @@
                 </div>
             </div>
         </div>
-        <div data-tauri-drag-region class="row pt-1">
+        <div data-tauri-drag-region class="row pt-1 text-start">
             <div class="collapse multi-collapse" id="collapseRoom">
                 <div class="row py-1">
                     <div class="col">
-                        Players in lobby
-                        <ul class="list-group" id="users"></ul>
+                        <label class="form-label">Players in lobby</label>
+                        <div style="height: 150px;" class="bg-dark-subtle rounded-2 overflow-y-auto">
+                            <ul class="list-group list-group-flush" id="users"></ul>
+                        </div>
                     </div>
                     <div class="col">
-                        <div class="row py-1">
+                        <label class="form-label">Rooms</label>
+                        <div class="row">
                             <div class="col">
-                                Rooms
-                            </div>
-                            <div class="col">
-                                <!-- Button trigger modal -->
-                                <button type="button" class="btn btn-primary" data-bs-toggle="modal"
-                                    data-bs-target="#exampleModal">
-                                    <i class="bi bi-plus"></i>New room
-                                </button>
-                                <!-- Modal -->
-                                <div class="modal fade" id="exampleModal" tabindex="-1"
-                                    aria-labelledby="exampleModalLabel" aria-hidden="true">
-                                    <div class="modal-dialog modal-dialog-centered">
-                                        <div class="modal-content">
-                                            <div class="modal-header">
-                                                <h1 class="modal-title fs-5" id="exampleModalLabel">Room settings</h1>
-                                                <button type="button" class="btn-close" data-bs-dismiss="modal"
-                                                    aria-label="Close"></button>
-                                            </div>
-                                            <div class="modal-body">
-                                                <div class="row">
-                                                    <div class="input-group mb-3">
-                                                        <input class="form-control" type="text" id="room-name"
-                                                            aria-label=".form-control-lg example">
-                                                        <span class="input-group-text">Room name</span>
-                                                    </div>
-                                                </div>
-                                                <div class="row">
-                                                    <div class="input-group mb-3">
-                                                        <button class="btn btn-outline-primary"
-                                                            style="pointer-events: none; cursor: default;"
-                                                            type="button">Maximum players</button>
-                                                        <button class="btn btn-outline-primary dropdown-toggle"
-                                                            type="button" data-bs-toggle="dropdown"
-                                                            aria-expanded="false" id="room-max-players">2</button>
-                                                        <ul class="dropdown-menu">
-                                                            <li><a class="dropdown-item active" href="#">2</a></li>
-                                                            <li><a class="dropdown-item" href="#">3</a></li>
-                                                            <li><a class="dropdown-item" href="#">4</a></li>
-                                                            <li><a class="dropdown-item" href="#">5</a></li>
-                                                            <li><a class="dropdown-item" href="#">6</a></li>
-                                                            <li><a class="dropdown-item" href="#">7</a></li>
-                                                            <li><a class="dropdown-item" href="#">8</a></li>
-                                                        </ul>
-                                                    </div>
-
-                                                </div>
-                                                <div class="row">
-                                                    <div class="input-group mb-3">
-                                                        <input class="form-control" type="text" id="room-password"
-                                                            aria-label=".form-control-lg example">
-                                                        <span class="input-group-text">Password</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="modal-footer">
-                                                <button type="button" class="btn btn-success"
-                                                    id="new-room-button">Ok</button>
-                                                <button type="button" class="btn btn-secondary"
-                                                    data-bs-dismiss="modal">Cancel</button>
-                                            </div>
-                                        </div>
-                                    </div>
+                                <div style="height: 150px;" class="bg-dark-subtle rounded-2 overflow-y-auto">
+                                    <ul class="list-group list-group-flush" id="sessions"></ul>
                                 </div>
                             </div>
                         </div>
-                        <div class="row py-1">
-                            <div class="list-group" id="sessions">
-                                <button type="button" class="list-group-item list-group-item-action"
-                                    aria-current="true"><text>Room 0</text>
-                                    <span class="badge bg-success">1/4</span>
+                        <div class="row pt-3 align-items-start  justify-content-start">
+                            <div class="col col-auto">
+                                <!-- Button trigger modal -->
+                                <button type="button" class="btn btn-primary" data-bs-toggle="modal"
+                                    data-bs-target="#roomModal">
+                                    <i class="bi bi-plus"></i>New room
                                 </button>
-                                <button type="button" class="list-group-item list-group-item-action"
-                                    aria-current="true"><text>Room 1</text>
-                                    <span class="badge bg-success ">1/4</span>
+                            </div>
+                            <div class="col">
+                                <button type="button" class="btn btn-primary" disabled data-bs-toggle="modal"
+                                    data-bs-target="#roomModal">
+                                    <i class="bi bi-plus"></i>Join room
                                 </button>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="row">
-                    Lobby chat
-                    <ul class="list-group" id="messages"></ul>
+
+                <div class="row py-1">
+                    <div class="col">
+                        <label class="form-label">Lobby chat</label>
+                        <div style="height: 150px;" class="bg-dark-subtle rounded-2 overflow-y-auto">
+                            <ul class="list-group list-group-flush" id="messages"></ul>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -186,6 +137,55 @@
                 <button id="connect-button" type="button" class="btn btn-lg btn-success"><text
                         class="fs-2">Connect</text>
                 </button>
+            </div>
+        </div>
+    </div>
+    <!-- Modal -->
+    <div class="modal fade" id="roomModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="exampleModalLabel">Room settings</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="input-group mb-3">
+                            <input class="form-control" type="text" id="room-name"
+                                aria-label=".form-control-lg example">
+                            <span class="input-group-text">Room name</span>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="input-group mb-3">
+                            <button class="btn btn-outline-primary" style="pointer-events: none; cursor: default;"
+                                type="button">Maximum players</button>
+                            <button class="btn btn-outline-primary dropdown-toggle" type="button"
+                                data-bs-toggle="dropdown" aria-expanded="false" id="room-max-players">2</button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item active" href="#">2</a></li>
+                                <li><a class="dropdown-item" href="#">3</a></li>
+                                <li><a class="dropdown-item" href="#">4</a></li>
+                                <li><a class="dropdown-item" href="#">5</a></li>
+                                <li><a class="dropdown-item" href="#">6</a></li>
+                                <li><a class="dropdown-item" href="#">7</a></li>
+                                <li><a class="dropdown-item" href="#">8</a></li>
+                            </ul>
+                        </div>
+
+                    </div>
+                    <div class="row">
+                        <div class="input-group mb-3" hidden>
+                            <input class="form-control" type="text" id="room-password"
+                                aria-label=".form-control-lg example">
+                            <span class="input-group-text">Password (optional)</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-success" id="new-room-button">Ok</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                </div>
             </div>
         </div>
     </div>

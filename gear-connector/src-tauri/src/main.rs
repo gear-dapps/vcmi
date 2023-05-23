@@ -57,6 +57,11 @@ pub enum GuiCommand {
         max_players: u8,
         mods: String,
     },
+    JoinRoom {
+        room_name: String,
+        password: String,
+        mods: String,
+    },
     ExpandLog,
     Cancel,
 }
@@ -83,7 +88,7 @@ fn main() {
         .manage(gui_sender)
         .plugin(tauri_plugin_positioner::init())
         .invoke_handler(tauri::generate_handler![
-            connect, skip, expand_log, new_room
+            connect, skip, expand_log, new_room, join_room
         ])
         .setup(|app| {
             let app_handle = app.handle();
@@ -98,15 +103,6 @@ fn main() {
             let subscriber = Registry::default().with(stdout_log).with(my_subscriber);
             tracing::subscriber::set_global_default(subscriber).unwrap();
 
-            // main_window.hide().unwrap();
-            // log_window.hide().unwrap();
-
-            // main_window
-            //     .set_size(tauri::Size::Physical(tauri::PhysicalSize {
-            //         width: 780,
-            //         height: 585,
-            //     }))
-            //     .unwrap();
             main_window.center().unwrap();
             let address = SocketAddr::from_str("127.0.0.1:6666").unwrap();
             tauri::async_runtime::spawn(async move {
@@ -157,7 +153,7 @@ fn main() {
             });
 
             std::thread::spawn(move || {
-                let lobby: LobbyClient =
+                let mut lobby: LobbyClient =
                     LobbyClient::new(need_stop, lobby_command_receiver, lobby_reply_sender);
                 lobby.run().unwrap();
             });
@@ -224,6 +220,25 @@ async fn new_room(
         room_name,
         password,
         max_players,
+        mods,
+    };
+    gui_sender.send(cmd).expect("Send Error");
+
+    Ok(())
+}
+
+#[tauri::command]
+async fn join_room(
+    room_name: String,
+    password: String,
+    mods: String,
+    gui_sender: tauri::State<'_, Sender<GuiCommand>>,
+) -> Result<(), String> {
+    info!("Join Room");
+    let mods = "h3-for-vcmi-englisation&1.2;vcmi&1.2;vcmi-extras&3.3.6;vcmi-extras.arrowtowericons&1.1;vcmi-extras.battlefieldactions&0.2;vcmi-extras.bonusicons&0.8.1;vcmi-extras.bonusicons.bonus icons&0.8;vcmi-extras.bonusicons.immunity icons&0.6;vcmi-extras.extendedrmg&1.2;vcmi-extras.extraresolutions&1.0;vcmi-extras.quick-exchange&1.0".to_string();
+    let cmd = GuiCommand::JoinRoom {
+        room_name,
+        password,
         mods,
     };
     gui_sender.send(cmd).expect("Send Error");

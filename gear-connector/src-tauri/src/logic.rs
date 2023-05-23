@@ -14,7 +14,7 @@ use tauri_plugin_positioner::{Position, WindowExt};
 use crate::{
     gear_client::{GearCommand, GearReply, RECV_TIMEOUT},
     ipfs_client::{IpfsCommand, IpfsReply},
-    lobby::{LobbyClient, LobbyCommand, LobbyReply},
+    lobby::{LobbyClient, LobbyCommand, LobbyReply, VCMI_VERSION},
     program_io::{Action, ArchiveDescription, Event, GameState},
     GuiCommand,
 };
@@ -265,7 +265,7 @@ impl Logic {
             .send(LobbyCommand::Connect(address))
             .expect("Send error");
         self.lobby_command_sender
-            .send(LobbyCommand::Greeting(4u8, username, String::new()))
+            .send(LobbyCommand::Greeting(username, VCMI_VERSION.to_string()))
             .expect("Send Error")
     }
 
@@ -313,6 +313,16 @@ impl Logic {
                             .send(lobby_command)
                             .expect("Send Error");
                     }
+                    GuiCommand::JoinRoom {
+                        room_name,
+                        password,
+                        mods,
+                    } => {
+                        let lobby_command = LobbyCommand::Join(room_name, password, mods);
+                        self.lobby_command_sender
+                            .send(lobby_command)
+                            .expect("Send Error");
+                    }
                 }
             }
             Err(e) if e == RecvTimeoutError::Timeout => {}
@@ -332,20 +342,28 @@ impl Logic {
                         tracing::debug!("Connected to lobby");
                         self.main_window.emit("showRooms", "").unwrap();
                     }
-                    LobbyReply::Created(room_name) => todo!(),
+                    LobbyReply::Created(room_name) => {
+                        self.main_window.emit("created", room_name).unwrap()
+                    }
                     LobbyReply::Sessions(rooms) => {
                         self.main_window.emit("addSessions", &rooms).unwrap()
                     }
-                    LobbyReply::Joined => todo!(),
+                    LobbyReply::Joined(room_name, username) => self
+                        .main_window
+                        .emit("joined", (room_name, username))
+                        .unwrap(),
                     LobbyReply::Kicked => todo!(),
                     LobbyReply::Start => todo!(),
                     LobbyReply::Host => todo!(),
-                    LobbyReply::Status => todo!(),
+                    LobbyReply::Status(users_count, username, status) => self
+                        .main_window
+                        .emit("status", (users_count, username, status))
+                        .unwrap(),
                     LobbyReply::ServerError(error) => {
                         self.main_window.emit("alert", error).unwrap()
                     }
-                    LobbyReply::Mods => todo!(),
-                    LobbyReply::ClientMods => todo!(),
+                    LobbyReply::Mods => {}
+                    LobbyReply::ClientMods => {}
                     LobbyReply::Chat(username, message) => {
                         self.main_window
                             .emit("chatMessage", (username, message))
