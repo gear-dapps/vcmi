@@ -158,7 +158,7 @@ impl IpfsClient {
                     Err(error) => {
                         tracing::error!("Error in another thread: {}", error);
                         need_stop_clone.store(true, Relaxed);
-                        panic!("Error in another thread: {}", error);
+                        // panic!("Error in another thread: {}", error);
                     }
                 }
             }

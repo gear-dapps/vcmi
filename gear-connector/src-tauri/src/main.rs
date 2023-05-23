@@ -28,7 +28,6 @@ use ipfs_client::IpfsCommand;
 use ipfs_client::IpfsReply;
 use lobby::LobbyClient;
 use logic::Logic;
-use std::sync::atomic::Ordering::Relaxed;
 use tauri::Manager;
 use tracing::info;
 use tracing_core::LevelFilter;
@@ -51,6 +50,12 @@ pub enum GuiCommand {
         program_id: String,
         account_id: String,
         password: String,
+    },
+    NewRoom {
+        room_name: String,
+        password: String,
+        max_players: u8,
+        mods: String,
     },
     ExpandLog,
     Cancel,
@@ -77,13 +82,15 @@ fn main() {
     tauri::Builder::default()
         .manage(gui_sender)
         .plugin(tauri_plugin_positioner::init())
-        .invoke_handler(tauri::generate_handler![connect, skip, expand_log])
+        .invoke_handler(tauri::generate_handler![
+            connect, skip, expand_log, new_room
+        ])
         .setup(|app| {
             let app_handle = app.handle();
             let main_window = app_handle.get_window("lobby").unwrap();
             let log_window = app_handle.get_window("log").unwrap();
 
-            let filter = LevelFilter::INFO;
+            let filter = LevelFilter::DEBUG;
             let stdout_log = tracing_subscriber::fmt::layer().with_filter(filter);
             let my_subscriber = MainWindowSubscriber {
                 window: log_window.clone(),
@@ -150,7 +157,9 @@ fn main() {
             });
 
             std::thread::spawn(move || {
-                let lobby = LobbyClient::new(need_stop, lobby_command_receiver, lobby_reply_sender);
+                let lobby: LobbyClient =
+                    LobbyClient::new(need_stop, lobby_command_receiver, lobby_reply_sender);
+                lobby.run().unwrap();
             });
 
             Ok(())
@@ -203,4 +212,21 @@ async fn expand_log(gui_sender: tauri::State<'_, Sender<GuiCommand>>) -> Result<
 }
 
 #[tauri::command]
-async fn join_room() {}
+async fn new_room(
+    room_name: String,
+    password: String,
+    max_players: u8,
+    mods: String,
+    gui_sender: tauri::State<'_, Sender<GuiCommand>>,
+) -> Result<(), String> {
+    info!("New Room");
+    let cmd = GuiCommand::NewRoom {
+        room_name,
+        password,
+        max_players,
+        mods,
+    };
+    gui_sender.send(cmd).expect("Send Error");
+
+    Ok(())
+}

@@ -8,7 +8,7 @@ use crossbeam_channel::{Receiver, RecvTimeoutError, Sender};
 use gclient::WSAddress;
 use gear_connector_api::{VcmiCommand, VcmiReply, VcmiSavedGame};
 use gstd::ActorId;
-use tauri::{PhysicalSize, Size, Window, LogicalSize};
+use tauri::{LogicalSize, PhysicalSize, Size, Window};
 use tauri_plugin_positioner::{Position, WindowExt};
 
 use crate::{
@@ -81,8 +81,9 @@ impl Logic {
 
     pub async fn run(&mut self) {
         while !self.need_stop.load(Relaxed) {
-            self.process_gui_command().await;
+            self.process_gui_command();
             self.process_vcmi_command().await;
+            self.process_lobby_reply();
         }
     }
 
@@ -264,7 +265,8 @@ impl Logic {
             .send(LobbyCommand::Connect(address))
             .expect("Send error");
         self.lobby_command_sender
-            .send(LobbyCommand::Greeting(4u8, username, String::new())).expect("Send Error")
+            .send(LobbyCommand::Greeting(4u8, username, String::new()))
+            .expect("Send Error")
     }
 
     fn process_gui_command(&mut self) {
@@ -292,25 +294,76 @@ impl Logic {
                         self.need_stop.store(true, Relaxed);
                     }
                     GuiCommand::ExpandLog => {
-                        self.log_window.set_size(Size::Logical(LogicalSize::new(0.3, 1.0))).unwrap();
-                        // let size = self.log_window.inner_size().unwrap();
-                        // const EXPANDED_SIZE: u32 = 600;
-                        // let height = match size.height == EXPANDED_SIZE {
-                        //     true => 150,
-                        //     false => EXPANDED_SIZE,
-                        // };
-                        // let width = size.width;
-                        // self.log_window
-                        //     .set_size(Size::Physical(PhysicalSize::new(width, height)))
-                        //     .unwrap();
+                        self.log_window
+                            .set_size(Size::Logical(LogicalSize::new(0.3, 1.0)))
+                            .unwrap();
+
                         std::thread::sleep(std::time::Duration::from_millis(1));
                         self.log_window.move_window(Position::TopRight).unwrap();
+                    }
+                    GuiCommand::NewRoom {
+                        room_name,
+                        password,
+                        max_players,
+                        mods,
+                    } => {
+                        let lobby_command =
+                            LobbyCommand::Create(room_name, password, max_players, mods);
+                        self.lobby_command_sender
+                            .send(lobby_command)
+                            .expect("Send Error");
                     }
                 }
             }
             Err(e) if e == RecvTimeoutError::Timeout => {}
             Err(e) => {
                 tracing::error!("Error in another thread: {}", e);
+                self.need_stop.store(true, Relaxed);
+            }
+        }
+    }
+
+    fn process_lobby_reply(&mut self) {
+        match self.lobby_reply_receiver.recv_timeout(RECV_TIMEOUT) {
+            Ok(lobby_reply) => {
+                tracing::debug!("Process Lobby Reply: {:?}", lobby_reply);
+                match lobby_reply {
+                    LobbyReply::Connected => {
+                        tracing::debug!("Connected to lobby");
+                        self.main_window.emit("showRooms", "").unwrap();
+                    }
+                    LobbyReply::Created(room_name) => todo!(),
+                    LobbyReply::Sessions(rooms) => {
+                        self.main_window.emit("addSessions", &rooms).unwrap()
+                    }
+                    LobbyReply::Joined => todo!(),
+                    LobbyReply::Kicked => todo!(),
+                    LobbyReply::Start => todo!(),
+                    LobbyReply::Host => todo!(),
+                    LobbyReply::Status => todo!(),
+                    LobbyReply::ServerError(error) => {
+                        self.main_window.emit("alert", error).unwrap()
+                    }
+                    LobbyReply::Mods => todo!(),
+                    LobbyReply::ClientMods => todo!(),
+                    LobbyReply::Chat(username, message) => {
+                        self.main_window
+                            .emit("chatMessage", (username, message))
+                            .unwrap();
+                    }
+                    LobbyReply::Users(users) => {
+                        self.main_window
+                            .emit("addUsers", users)
+                            .expect("Can't emit addUsers");
+                        tracing::debug!("add user");
+                    }
+                    LobbyReply::Health => todo!(),
+                    LobbyReply::GameMode => todo!(),
+                }
+            }
+            Err(e) if e == RecvTimeoutError::Timeout => {}
+            Err(e) => {
+                tracing::error!("process_lobby_reply(): Error in another thread: {}", e);
                 self.need_stop.store(true, Relaxed);
             }
         }

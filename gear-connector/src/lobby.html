@@ -28,22 +28,21 @@
         <div data-tauri-drag-region class="row pt-3">
             <div class="col mx-1">
                 <div class="input-group">
-                    <span class="input-group-text" id="basic-addon3">Lobby</span>
                     <input type="text" class="form-control" id="lobby-address" placeholder="Address"
-                        aria-label="Address" aria-describedby="basic-addon3 basic-addon4">
+                        aria-label="Address" aria-describedby="basic-addon3 basic-addon4" value="0.0.0.0:5002">
+                    <span class="input-group-text" id="basic-addon3">Lobby</span>
                 </div>
             </div>
             <div class="col mx-1">
                 <div class="input-group mb-3">
-                    <span class="input-group-text" id="basic-addon3">Username</span>
                     <input type="text" class="form-control" id="username" aria-label="Username"
-                        aria-describedby="button-addon2">
+                        aria-describedby="button-addon2" value="Azoyan">
+                    <span class="input-group-text" id="basic-addon3">Username</span>
                 </div>
             </div>
         </div>
 
-
-        <div data-tauri-drag-region class="row py-3 text-start">
+        <div data-tauri-drag-region class="row py-1 text-start">
             <div class="col mx-1">
                 <div class="input-group mb-3">
                     <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown"
@@ -65,7 +64,7 @@
             </div>
         </div>
 
-        <div data-tauri-drag-region class="row py-3">
+        <div data-tauri-drag-region class="row py-1">
             <div class="col mx-1">
                 <div class="input-group">
                     <span class="input-group-text">Mnemonic phrase</span>
@@ -78,6 +77,101 @@
                     <span class="input-group-text">Password</span>
                     <input type="text" class="form-control" id="password" aria-label="Password"
                         aria-describedby="button-addon2">
+                </div>
+            </div>
+        </div>
+        <div data-tauri-drag-region class="row pt-1">
+            <div class="collapse multi-collapse" id="collapseRoom">
+                <div class="row py-1">
+                    <div class="col">
+                        Players in lobby
+                        <ul class="list-group" id="users"></ul>
+                    </div>
+                    <div class="col">
+                        <div class="row py-1">
+                            <div class="col">
+                                Rooms
+                            </div>
+                            <div class="col">
+                                <!-- Button trigger modal -->
+                                <button type="button" class="btn btn-primary" data-bs-toggle="modal"
+                                    data-bs-target="#exampleModal">
+                                    <i class="bi bi-plus"></i>New room
+                                </button>
+                                <!-- Modal -->
+                                <div class="modal fade" id="exampleModal" tabindex="-1"
+                                    aria-labelledby="exampleModalLabel" aria-hidden="true">
+                                    <div class="modal-dialog modal-dialog-centered">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h1 class="modal-title fs-5" id="exampleModalLabel">Room settings</h1>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                                    aria-label="Close"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="row">
+                                                    <div class="input-group mb-3">
+                                                        <input class="form-control" type="text" id="room-name"
+                                                            aria-label=".form-control-lg example">
+                                                        <span class="input-group-text">Room name</span>
+                                                    </div>
+                                                </div>
+                                                <div class="row">
+                                                    <div class="input-group mb-3">
+                                                        <button class="btn btn-outline-primary"
+                                                            style="pointer-events: none; cursor: default;"
+                                                            type="button">Maximum players</button>
+                                                        <button class="btn btn-outline-primary dropdown-toggle"
+                                                            type="button" data-bs-toggle="dropdown"
+                                                            aria-expanded="false" id="room-max-players">2</button>
+                                                        <ul class="dropdown-menu">
+                                                            <li><a class="dropdown-item active" href="#">2</a></li>
+                                                            <li><a class="dropdown-item" href="#">3</a></li>
+                                                            <li><a class="dropdown-item" href="#">4</a></li>
+                                                            <li><a class="dropdown-item" href="#">5</a></li>
+                                                            <li><a class="dropdown-item" href="#">6</a></li>
+                                                            <li><a class="dropdown-item" href="#">7</a></li>
+                                                            <li><a class="dropdown-item" href="#">8</a></li>
+                                                        </ul>
+                                                    </div>
+
+                                                </div>
+                                                <div class="row">
+                                                    <div class="input-group mb-3">
+                                                        <input class="form-control" type="text" id="room-password"
+                                                            aria-label=".form-control-lg example">
+                                                        <span class="input-group-text">Password</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-success"
+                                                    id="new-room-button">Ok</button>
+                                                <button type="button" class="btn btn-secondary"
+                                                    data-bs-dismiss="modal">Cancel</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row py-1">
+                            <div class="list-group" id="sessions">
+                                <button type="button" class="list-group-item list-group-item-action"
+                                    aria-current="true"><text>Room 0</text>
+                                    <span class="badge bg-success">1/4</span>
+                                </button>
+                                <button type="button" class="list-group-item list-group-item-action"
+                                    aria-current="true"><text>Room 1</text>
+                                    <span class="badge bg-success ">1/4</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    Lobby chat
+                    <ul class="list-group" id="messages"></ul>
                 </div>
             </div>
         </div>

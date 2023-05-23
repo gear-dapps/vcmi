@@ -1,13 +1,16 @@
-use crossbeam_channel::{Receiver, RecvTimeoutError, Sender};
-use parity_scale_codec::Output;
-use std::sync::{
-    atomic::{AtomicBool, Ordering::Relaxed},
-    Arc,
-};
-use tokio::{io::AsyncWriteExt, net::TcpStream};
-
 use crate::gear_client::RECV_TIMEOUT;
+use crossbeam_channel::{Receiver, RecvTimeoutError, Sender};
+use serde::Serialize;
+use std::net::TcpStream;
+use std::{
+    io::{Read, Write},
+    sync::{
+        atomic::{AtomicBool, Ordering::Relaxed},
+        Arc, RwLock,
+    },
+};
 
+#[derive(Debug)]
 pub enum LobbyCommand {
     Connect(String),
     Greeting(u8, String, String),
@@ -24,29 +27,48 @@ pub enum LobbyCommand {
     HostMode(u8),
 }
 
+#[derive(Debug)]
 pub enum LobbyReply {
-    Created,
-    Sessions,
+    Connected,
+    Created(String),
+    Sessions(Vec<Room>),
     Joined,
     Kicked,
     Start,
     Host,
     Status,
-    ServerError,
+    ServerError(String),
     Mods,
     ClientMods,
-    Chat,
-    Users,
+    Chat(String, String),
+    Users(Vec<String>),
     Health,
     GameMode,
+}
+#[derive(Debug, Serialize)]
+pub struct Room {
+    pub joined: u32,
+    pub total: u32,
+    pub protected: bool,
+    pub name: String,
 }
 
 const PROTOCOL_VERSION: u8 = 4;
 const PROTOCOL_ENCODING: &str = "utf8";
 
+const SESSIONS: &str = ":>>SESSIONS:";
+const USERS: &str = ":>>USERS:";
+const MSG: &str = ":>>MSG:";
+const ERROR: &str = ":>>ERROR:";
+const CREATED: &str = ":>>CREATED:";
+const JOIN: &str = ":>>JOIN:";
+const GAMEMODE: &str = ":>>GAMEMODE:";
+const STATUS: &str = ":>>STATUS:";
+const KICK: &str = ":>>KICK:";
+
 pub struct LobbyClient {
     need_stop: Arc<AtomicBool>,
-    connection: Option<TcpStream>,
+    connection: Arc<RwLock<Option<TcpStream>>>,
     lobby_command_receiver: Receiver<LobbyCommand>,
     lobby_reply_sender: Sender<LobbyReply>,
     username: String,
@@ -60,134 +82,146 @@ impl LobbyClient {
     ) -> Self {
         Self {
             need_stop,
-            connection: None,
+            connection: Arc::new(RwLock::new(None)),
             lobby_command_receiver,
             lobby_reply_sender,
             username: String::new(),
         }
     }
 
-    pub async fn run(&'static mut self) -> std::io::Result<()> {
+    pub fn run(&self) -> std::io::Result<()> {
         let lobby_command_receiver = self.lobby_command_receiver.clone();
         let lobby_reply_sender = self.lobby_reply_sender.clone();
         let need_stop = self.need_stop.clone();
         let need_stop_clone = self.need_stop.clone();
-        tokio::spawn(async move {
-            while !need_stop.load(Relaxed) {
-                let command = lobby_command_receiver.recv_timeout(RECV_TIMEOUT);
+        let connection = self.connection.clone();
+        let stream = connection.clone();
+        let lobby_reply_sender2 = self.lobby_reply_sender.clone();
 
-                match command {
-                    Ok(command) => {
-                        self.process_command(command);
-                    }
-                    Err(error) if error == RecvTimeoutError::Timeout => {}
-                    Err(error) => {
-                        tracing::error!("Error in another thread: {}", error);
-                        need_stop.store(true, Relaxed);
-                    }
+        let mut raw_reply = [0; 4096];
+
+        'outer: while !need_stop.load(Relaxed) {
+            let command: Result<LobbyCommand, RecvTimeoutError> =
+                lobby_command_receiver.recv_timeout(RECV_TIMEOUT);
+            // tracing::info!("send thread");
+            match command {
+                Ok(command) => {
+                    Self::process_command(lobby_reply_sender.clone(), connection.clone(), command);
+                }
+                Err(error) if error == RecvTimeoutError::Timeout => {}
+                Err(error) => {
+                    tracing::error!("Error in another thread: {}", error);
+                    need_stop.store(true, Relaxed);
                 }
             }
-            tokio::spawn(async move {
-                let mut msg = vec![0u8; 4096];
-                while need_stop_clone.load(Relaxed) {
-                    if let Some(stream) = &self.connection {
-                        stream.readable().await.unwrap();
-                        match stream.try_read(&mut msg) {
-                            Ok(n) => {
-                                msg.truncate(n);
-                                tracing::info!(
-                                    "Received from lobby: {}",
-                                    String::from_utf8(msg).expect("From utf8")
-                                );
 
-                                break;
+            if let Some(mut stream) = stream.read().unwrap().as_ref() {
+                while !need_stop.load(Relaxed) {
+                    // tracing::info!("read");
+                    match stream.read(&mut raw_reply) {
+                        Ok(n) => {
+                            let mut raw_reply = raw_reply.to_vec();
+                            raw_reply.truncate(n);
+                            let raw =
+                                String::from_utf8(raw_reply).expect("Can't convert reply to ut8");
+                            tracing::info!("Received from lobby: {}", raw);
+
+                            let commands = split_commands(&raw);
+                            for command in commands {
+                                let reply = parse_raw_reply(command);
+
+                                lobby_reply_sender2.send(reply).expect("Send error");
                             }
-                            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                                continue;
-                            }
-                            Err(e) => {
-                                need_stop_clone.store(true, Relaxed);
-                                panic!("{}", e);
-                            }
+                            break;
+                        }
+                        Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                            continue 'outer;
+                        }
+                        Err(e) => {
+                            need_stop_clone.store(true, Relaxed);
+                            tracing::error!("Can't read lobby socket: {}", e);
                         }
                     }
                 }
-            });
-        });
+            }
+
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
 
         Ok(())
     }
 
-    pub async fn process_command(&mut self, command: LobbyCommand) {
+    pub fn process_command(
+        lobby_reply_sender: Sender<LobbyReply>,
+        connection: Arc<RwLock<Option<TcpStream>>>,
+        command: LobbyCommand,
+    ) {
+        tracing::info!("process lobby command(): {:?}", command);
         match command {
-            LobbyCommand::Connect(address) => self
-                .connect(address)
-                .await
-                .expect("Can't connecto to lobby"),
-            LobbyCommand::Greeting(protocol_version, username, vcmi_version) => {
-                self.greetings(protocol_version, username, vcmi_version)
-                    .await;
+            LobbyCommand::Connect(address) => {
+                Self::connect(connection, address).expect("Can't connect to lobby");
+                lobby_reply_sender
+                    .send(LobbyReply::Connected)
+                    .expect("Can't send");
             }
-            LobbyCommand::Username(username) => todo!(),
-            LobbyCommand::Message(_) => todo!(),
-            LobbyCommand::Create(_, _, _, _) => todo!(),
-            LobbyCommand::Join(_, _, _) => todo!(),
-            LobbyCommand::Leave(_) => todo!(),
-            LobbyCommand::Kick(_) => todo!(),
-            LobbyCommand::Ready(_) => todo!(),
-            LobbyCommand::ForceStart(_) => todo!(),
-            LobbyCommand::Here => todo!(),
-            LobbyCommand::Alive => todo!(),
-            LobbyCommand::HostMode(_) => todo!(),
+            LobbyCommand::Greeting(protocol_version, username, vcmi_version) => {
+                Self::greetings(connection, username, vcmi_version);
+            }
+            command => {
+                if let Some(connection) = connection.write().expect("Poison Error").as_mut() {
+                    Self::send(connection, &command);
+                }
+            }
         }
     }
 
-    pub async fn connect(&mut self, address: String) -> std::io::Result<()> {
-        let stream = TcpStream::connect(&address).await?;
+    pub fn connect(
+        connection: Arc<RwLock<Option<TcpStream>>>,
+        address: String,
+    ) -> std::io::Result<()> {
+        let stream = TcpStream::connect(&address)?;
+        stream.set_read_timeout(Some(RECV_TIMEOUT)).unwrap();
+        *connection.write().unwrap() = Some(stream);
 
-        self.connection = Some(stream);
         Ok(())
     }
 
-    pub async fn greetings(&mut self, username: String, vcmi_version: String) {
-        self.username = username.clone();
+    pub fn greetings(
+        connection: Arc<RwLock<Option<TcpStream>>>,
+        username: String,
+        vcmi_version: String,
+    ) {
+        let mut bytes: Vec<u8> = vec![];
         let command = LobbyCommand::Greeting(PROTOCOL_VERSION, username, vcmi_version).to_string();
 
         let command_len = command.len() as u32;
         let len_bytes = command_len.to_le_bytes();
+        bytes.extend(&len_bytes);
 
         let encoding = PROTOCOL_ENCODING.as_bytes();
 
         let encoding_len = encoding.len() as u8;
         let encoding_len_bytes = encoding_len.to_le_bytes();
-
-        let mut bytes: Vec<u8> = vec![];
-        bytes.extend(&len_bytes);
         bytes.extend(encoding_len_bytes);
+
         bytes.extend(encoding);
         bytes.extend(command.as_bytes());
 
-        if let Some(ref mut stream) = self.connection {
-            stream
-                .write_all(&bytes)
-                .await
-                .expect("Can't send greetings");
+        let stream = connection.write();
+        let mut s = stream.unwrap();
+        if let Some(stream) = s.as_mut() {
+            stream.write_all(&bytes).expect("Can't send greetings");
         }
     }
 
-    pub fn send(&mut self, command: &LobbyCommand) {
+    pub fn send(connection: &mut TcpStream, command: &LobbyCommand) {
         let command = command.to_string();
-
-        let command_len = command.len() as u32;
-        let len_bytes = command_len.to_le_bytes();
-
         let mut bytes: Vec<u8> = vec![];
+        tracing::debug!("Send command {:?} to lobby", command);
 
         bytes.extend(command.as_bytes());
 
-        if let Some(ref mut stream) = self.connection {
-            stream.write(&bytes);
-        }
+        connection.write_all(&bytes).expect("Can't send");
     }
 }
 
@@ -214,9 +248,92 @@ impl LobbyCommand {
             LobbyCommand::Here => "<HERE>".to_string(),
             LobbyCommand::Alive => "<ALIVE>".to_string(),
             LobbyCommand::HostMode(host_mode) => format!("<HOSTMODE>{}", host_mode),
-            LobbyCommand::Connect(address) => unreachable!(),
+            LobbyCommand::Connect(_address) => unreachable!(),
         }
     }
 }
 
-fn request_new_session(session: String, total_players: i32, password: String, mods: String) {}
+fn parse_raw_reply(raw: String) -> LobbyReply {
+    match raw {
+        raw if raw.starts_with(CREATED) => parse_created(raw),
+        raw if raw.starts_with(SESSIONS) => parse_sessions(raw),
+        raw if raw.starts_with(USERS) => parse_users(raw),
+        raw if raw.starts_with(MSG) => parse_message(raw),
+        raw if raw.starts_with(ERROR) => parse_error(raw),
+        _ => unreachable!(),
+    }
+}
+
+fn parse_sessions(sessions: String) -> LobbyReply {
+    let mut splitted = sessions.split(":");
+    let len_str = splitted.nth(2).unwrap(); // rooms count
+
+    let len = len_str.parse::<usize>().unwrap();
+    let mut rooms = vec![];
+    for _ in 0..len {
+        let name = splitted.next().unwrap().to_string();
+        let joined = splitted.next().unwrap().to_string().parse().unwrap();
+        let total = splitted.next().unwrap().to_string().parse().unwrap();
+        let protected = splitted.next().unwrap().to_string().parse().unwrap();
+        let room = Room {
+            joined,
+            total,
+            protected,
+            name,
+        };
+        rooms.push(room);
+    }
+    LobbyReply::Sessions(rooms)
+}
+
+fn parse_users(users: String) -> LobbyReply {
+    let mut splitted = users.split(":");
+    let len_str = splitted.nth(2).unwrap(); // users count
+
+    let len = len_str.parse::<usize>().unwrap();
+    let mut users = vec![];
+    for i in 0..len {
+        let name = splitted.next().unwrap().to_string();
+
+        users.push(name);
+    }
+    LobbyReply::Users(users)
+}
+
+fn parse_created(created: String) -> LobbyReply {
+    let mut splitted = created.split(":");
+    let room_name = splitted.nth(2).unwrap().to_string();
+
+    LobbyReply::Created(room_name)
+}
+
+fn parse_message(message: String) -> LobbyReply {
+    let mut splitted = message.split(":");
+    let username = splitted.nth(2).unwrap().to_string();
+    let message = splitted.next().unwrap().to_string();
+
+    LobbyReply::Chat(username, message)
+}
+
+fn parse_error(message: String) -> LobbyReply {
+    let mut splitted = message.split(":");
+    let error = splitted.nth(2).unwrap().to_string();
+
+    LobbyReply::ServerError(error)
+}
+
+fn split_commands(input: &str) -> Vec<String> {
+    let delimiter = ":>>";
+
+    let mut result: Vec<String> = Vec::new();
+
+    let splitted = input.split(delimiter);
+
+    for s in splitted {
+        if !s.is_empty() {
+            result.push(format!("{delimiter}{s}"));
+        }
+    }
+
+    result
+}
