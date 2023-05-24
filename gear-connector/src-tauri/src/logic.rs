@@ -14,7 +14,7 @@ use tauri_plugin_positioner::{Position, WindowExt};
 use crate::{
     gear_client::{GearCommand, GearReply, RECV_TIMEOUT},
     ipfs_client::{IpfsCommand, IpfsReply},
-    lobby::{LobbyClient, LobbyCommand, LobbyReply, VCMI_VERSION},
+    lobby::{LobbyCommand, LobbyReply, VCMI_VERSION},
     program_io::{Action, ArchiveDescription, Event, GameState},
     GuiCommand,
 };
@@ -323,6 +323,12 @@ impl Logic {
                             .send(lobby_command)
                             .expect("Send Error");
                     }
+                    GuiCommand::Ready { room_name } => {
+                        let lobby_command = LobbyCommand::Ready(room_name);
+                        self.lobby_command_sender
+                            .send(lobby_command)
+                            .expect("Send Error");
+                    }
                 }
             }
             Err(e) if e == RecvTimeoutError::Timeout => {}
@@ -352,12 +358,21 @@ impl Logic {
                         .main_window
                         .emit("joined", (room_name, username))
                         .unwrap(),
-                    LobbyReply::Kicked => todo!(),
-                    LobbyReply::Start => todo!(),
-                    LobbyReply::Host => todo!(),
-                    LobbyReply::Status(users_count, username, status) => self
+                    LobbyReply::Kicked(room_name, username) => self
                         .main_window
-                        .emit("status", (users_count, username, status))
+                        .emit("kicked", (room_name, username))
+                        .unwrap(),
+                    LobbyReply::Start(connection_uuid) => {
+                        tracing::debug!("connection_uuid: {}", connection_uuid,)
+                    }
+                    LobbyReply::Host(vcmiserver_uuid, players_count) => tracing::debug!(
+                        "vcmiserver_uuid: {}, players_count: {}",
+                        vcmiserver_uuid,
+                        players_count
+                    ),
+                    LobbyReply::Status(users_count, statuses) => self
+                        .main_window
+                        .emit("status", (users_count, statuses))
                         .unwrap(),
                     LobbyReply::ServerError(error) => {
                         self.main_window.emit("alert", error).unwrap()
@@ -376,7 +391,9 @@ impl Logic {
                         tracing::debug!("add user");
                     }
                     LobbyReply::Health => todo!(),
-                    LobbyReply::GameMode => todo!(),
+                    LobbyReply::GameMode(game_mode) => {
+                        self.main_window.emit("updateGameMode", game_mode).unwrap();
+                    }
                 }
             }
             Err(e) if e == RecvTimeoutError::Timeout => {}

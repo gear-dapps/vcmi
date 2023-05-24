@@ -50,6 +50,12 @@ async function joinRoom(roomName) {
   });
 }
 
+async function ready(roomName) {
+  console.log("ready", roomName);
+  await invoke("ready", {
+    roomName: roomName,
+  });
+}
 
 window.addEventListener("DOMContentLoaded", () => {
   lobbyAddressInputEl = document.querySelector("#lobby-address")
@@ -65,29 +71,6 @@ window.addEventListener("DOMContentLoaded", () => {
   roomMaxPlayers = document.querySelector("#room-max-players")
   document.querySelector("#new-room-button").addEventListener("click", () => newRoom());
 });
-
-function readTextFile(file) {
-  var rawFile = new XMLHttpRequest();
-  rawFile.open("GET", file, false);
-  var allText = ""
-  rawFile.onreadystatechange = function () {
-    if (rawFile.readyState === 4) {
-      if (rawFile.status === 200 || rawFile.status == 0) {
-        allText = rawFile.responseText;
-      }
-    }
-  }
-  rawFile.send(null);
-  return allText
-}
-
-function createElementFromHTML(htmlString) {
-  var div = document.createElement('div');
-  div.innerHTML = htmlString.trim();
-
-  // Change this to div.childNodes to support multiple top-level nodes.
-  return div.firstChild;
-}
 
 await listen('alert', (event) => {
   console.log("js: connection_view: " + event)
@@ -116,8 +99,8 @@ await listen('addUsers', (event) => {
   for (let i = 0; i < users.length; ++i) {
     const listItem = document.createElement("li");
     listItem.className = "list-group-item";
-    listItem.classList.add("bg-primary");
-    listItem.classList.add("border-primary-subtle")
+    listItem.classList.add("bg-secondary");
+    // listItem.classList.add("border-primary-subtle")
 
     listItem.style = "--bs-bg-opacity: .2;"
     listItem.textContent = users[i];
@@ -129,24 +112,28 @@ await listen('addSessions', (event) => {
   let sessions = event.payload;
   console.log("add Session:", sessions);
   const div = document.getElementById("sessions");
-  while (div.firstChild) {
+  while (div.firstChild !== null) {
     div.removeChild(div.firstChild)
   }
   for (let i = 0; i < sessions.length; ++i) {
     const button = document.createElement("button");
-    button.className = "btn";
-    button.classList.add("border-primary-subtle")
-    
-    button.style = "background-color: rgb(0, 0, 50);"
-    button.textContent = sessions[i].name;
-    button.addEventListener("click", () => joinRoom(button.innerText));
+    button.classList.add("btn")
+    button.classList.add("btn-secondary")
+    // button.classList.add("border-primary")
+    // button.style = "background-color: rgb(0, 0, 50);"
+    button.textContent = sessions[i].name
+    button.value = sessions[i].name
+    button.addEventListener("click", () => joinRoom(button.value));
 
-    div.appendChild(button);
     const badge = document.createElement("span");
-    badge.classList.add("badge");
-    badge.classList.add("text-bg-success");
+    badge.classList.add("badge")
+    badge.classList.add("text-bg-light")
+    badge.classList.add("rounded-pill")
+    badge.classLi
     badge.textContent = sessions[i].joined + "/" + sessions[i].total
-    button.appendChild(badge);
+    button.appendChild(badge)
+    
+    div.appendChild(button)
   }
 })
 
@@ -154,9 +141,6 @@ await listen('chatMessage', (event) => {
   let messages = event.payload;
   console.log("chat Message:", messages);
   const list = document.getElementById("messages");
-  // while (list.firstChild) {
-  //   list.removeChild(list.firstChild);
-  // }
   const listItem = document.createElement("li");
 
   listItem.className = "list-group-item";
@@ -167,8 +151,7 @@ await listen('chatMessage', (event) => {
   text.textContent = messages[1];
   listItem.appendChild(text);
 
-  listItem.classList.add("bg-primary");
-  listItem.classList.add("border-primary-subtle")
+  listItem.classList.add("bg-dark");
 
   listItem.style = "--bs-bg-opacity: .2;"
   list.appendChild(listItem);
@@ -188,21 +171,71 @@ await listen('created', (event) => {
 })
 
 await listen('status', (event) => {
-  let usersCount = event.payload[0];
+  const usersCount = event.payload[0]
+  const players = document.getElementById("players")
+  const statuses = event.payload[1]
+  while (players.firstChild) players.removeChild(players.firstChild);
 
   for (let i = 0; i < usersCount; ++i) {
+    const listItem = document.createElement("li");
+    const status = statuses[i];
 
+
+    listItem.className = "list-group-item";
+    if (status[1] === 'True') {
+      const div = document.createElement("div");
+      div.classList.add("form-check")
+
+      const check = document.createElement("input");
+      check.setAttribute("checked", "")
+      check.setAttribute("type", "checkbox")
+      check.classList.add("form-check-input");
+      check.classList.add("form-check-input");
+      check.style = "background-color: #28a745; border-color: #28a745;"
+      check.id = status[0] + i
+      div.appendChild(check)
+
+      const label = document.createElement("label");
+      label.classList.add("form-check-label");
+      label.setAttribute("for", check.id)
+      label.textContent = status[0]
+      div.appendChild(label)
+
+      listItem.classList.add("bg-success");
+      listItem.classList.add("border-success-subtle")
+      listItem.style = "--bs-bg-opacity: .2;"
+      listItem.appendChild(div)
+    } else {
+      const text = document.createElement("text");
+      text.textContent = status[0];
+      listItem.appendChild(text);
+      listItem.appendChild(text)
+    }
+    players.appendChild(listItem);
   }
-  console.log("status:", usersCount);
+  console.log("statuses:", event.payload);
 })
 
 await listen('joined', (event) => {
   let joined = event.payload;
-  console.log("joined:", joined);
+  let room_name = joined[0]
+  let username = joined[1]
 
+  if (username == document.getElementById("username").value) {
+    const div = document.getElementById("room");
+    while (div.firstChild) {
+      div.removeChild(div.firstChild)
+    }
+    createPlayersInRoomWidget(div, room_name)
+  }
+  console.log("joined:", joined)
 })
 
+await listen('updateGameMode', (event) => {
+  let game_mod = event.payload;
+  console.log("game_mod:", game_mod);
 
+})
 
 
 const dropdownItems = document.querySelector('.dropdown-item');
@@ -220,3 +253,110 @@ dropdownItems.forEach(item => {
     activeItem = item;
   });
 });
+
+
+function createPlayersInRoomWidget(parentElement, roomName) {
+  // Create label element
+  const label = document.createElement("label");
+  label.className = "form-label";
+  label.textContent = "Players in the room";
+
+  // Create div elements
+  const divRow1 = document.createElement("div");
+  divRow1.className = "row";
+
+  const divCol1 = document.createElement("div");
+  divCol1.className = "col";
+
+  const divInner = document.createElement("div");
+  divInner.style.height = "150px";
+  divInner.className = "bg-dark-subtle rounded-2 overflow-y-auto";
+
+  // Create ul element
+  const ul = document.createElement("ul");
+  ul.className = "list-group list-group-flush";
+  ul.id = "players";
+
+  // Create div elements
+  const divRow2 = document.createElement("div");
+  divRow2.className = "row pt-3 align-items-start justify-content-start";
+
+  const divCol2 = document.createElement("div");
+  divCol2.className = "col";
+
+  // Create form-check elements
+  const formCheck1 = document.createElement("div");
+  formCheck1.className = "form-check form-check-inline";
+
+  const input1 = document.createElement("input");
+  input1.className = "form-check-input";
+  input1.type = "radio";
+  input1.name = "inlineRadioOptions";
+  input1.id = "inlineRadio1";
+  input1.value = "option1";
+
+  const label1 = document.createElement("label");
+  label1.className = "form-check-label";
+  label1.htmlFor = "inlineRadio1";
+  label1.textContent = "New game";
+
+  const formCheck2 = document.createElement("div");
+  formCheck2.className = "form-check form-check-inline";
+
+  const input2 = document.createElement("input");
+  input2.className = "form-check-input";
+  input2.type = "radio";
+  input2.name = "inlineRadioOptions";
+  input2.id = "inlineRadio2";
+  input2.value = "option2";
+
+  const label2 = document.createElement("label");
+  label2.className = "form-check-label";
+  label2.htmlFor = "inlineRadio2";
+  label2.textContent = "Load game";
+
+  // Create div elements
+  const divRow3 = document.createElement("div");
+  divRow3.className = "row pt-3 align-items-start justify-content-start";
+
+  const divCol3 = document.createElement("div");
+  divCol3.className = "col col-auto";
+
+  // Create button elements
+  const buttonLeave = document.createElement("button");
+  buttonLeave.type = "button";
+  buttonLeave.className = "btn btn-light";
+  buttonLeave.setAttribute("data-bs-toggle", "modal");
+  buttonLeave.innerHTML = '<i class="bi bi-plus"></i>Leave';
+
+  const buttonReady = document.createElement("button");
+  buttonReady.type = "button";
+  buttonReady.className = "btn btn-success";
+  buttonReady.setAttribute("data-bs-toggle", "modal");
+  buttonReady.innerHTML = '<i class="bi bi-plus"></i>Ready';
+  buttonReady.addEventListener("click", () => ready(roomName));
+
+  // Append elements to their respective parent elements
+  divInner.appendChild(ul);
+  divCol1.appendChild(divInner);
+  divRow1.appendChild(divCol1);
+
+  formCheck1.appendChild(input1);
+  formCheck1.appendChild(label1);
+
+  formCheck2.appendChild(input2);
+  formCheck2.appendChild(label2);
+
+  divCol2.appendChild(formCheck1);
+  divCol2.appendChild(formCheck2);
+  divRow2.appendChild(divCol2);
+
+  divCol3.appendChild(buttonLeave);
+  divCol3.appendChild(buttonReady);
+  divRow3.appendChild(divCol3);
+
+  parentElement.appendChild(label);
+  parentElement.appendChild(divRow1);
+  parentElement.appendChild(divRow2);
+  parentElement.appendChild(divRow3);
+}

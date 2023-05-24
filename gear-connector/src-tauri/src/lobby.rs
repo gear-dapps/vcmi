@@ -33,17 +33,17 @@ pub enum LobbyReply {
     Created(String),
     Sessions(Vec<Room>),
     Joined(String, String),
-    Kicked,
-    Start,
-    Host,
-    Status(String, String, String),
+    Kicked(String, String),
+    Start(String),
+    Host(String, u8),
+    Status(u8, Vec<(String, String)>),
     ServerError(String),
     Mods,
     ClientMods,
     Chat(String, String),
     Users(Vec<String>),
     Health,
-    GameMode,
+    GameMode(u8),
 }
 #[derive(Debug, Serialize)]
 pub struct Room {
@@ -68,7 +68,8 @@ const STATUS: &str = ":>>STATUS:";
 const KICK: &str = ":>>KICK:";
 const MODS: &str = ":>>MODS:";
 const MODSOTHER: &str = ":>>MODSOTHER:";
-
+const START: &str = ":>>START:";
+const HOST: &str = ":>>HOST:";
 pub struct LobbyClient {
     need_stop: Arc<AtomicBool>,
     connection: Option<TcpStream>,
@@ -248,6 +249,10 @@ fn parse_raw_reply(raw: String) -> LobbyReply {
         raw if raw.starts_with(STATUS) => parse_status(raw),
         raw if raw.starts_with(MODS) => parse_mods(raw),
         raw if raw.starts_with(MODSOTHER) => parse_modsother(raw),
+        raw if raw.starts_with(GAMEMODE) => parse_gamemode(raw),
+        raw if raw.starts_with(KICK) => parse_kick(raw),
+        raw if raw.starts_with(START) => parse_start(raw),
+        raw if raw.starts_with(HOST) => parse_host(raw),
         _ => unreachable!(),
     }
 }
@@ -320,11 +325,21 @@ fn parse_join(message: String) -> LobbyReply {
 
 fn parse_status(message: String) -> LobbyReply {
     let mut splitted = message.split(":");
-    let users_count = splitted.nth(2).unwrap().to_string();
-    let room_name = splitted.next().unwrap().to_string();
-    let username = splitted.next().unwrap().to_string();
+    let users_count = splitted
+        .nth(2)
+        .unwrap()
+        .to_string()
+        .parse()
+        .expect("Can't parse STATUS");
 
-    LobbyReply::Status(users_count, room_name, username)
+    let mut statuses = vec![];
+    for _ in 0..users_count {
+        let room_name = splitted.next().unwrap().to_string();
+        let username = splitted.next().unwrap().to_string();
+        statuses.push((room_name, username))
+    }
+
+    LobbyReply::Status(users_count, statuses)
 }
 
 fn parse_mods(_message: String) -> LobbyReply {
@@ -333,6 +348,42 @@ fn parse_mods(_message: String) -> LobbyReply {
 
 fn parse_modsother(_message: String) -> LobbyReply {
     LobbyReply::ClientMods
+}
+
+fn parse_gamemode(message: String) -> LobbyReply {
+    let mut splitted = message.split(":");
+    let game_mode: u8 = splitted
+        .nth(2)
+        .unwrap()
+        .to_string()
+        .parse()
+        .expect("Can't parse GameMOde");
+    LobbyReply::GameMode(game_mode)
+}
+
+fn parse_kick(message: String) -> LobbyReply {
+    let mut splitted = message.split(":");
+    let room_name = splitted.nth(2).unwrap().to_string();
+    let username = splitted.next().unwrap().to_string();
+    LobbyReply::Kicked(room_name, username)
+}
+
+fn parse_start(message: String) -> LobbyReply {
+    let mut splitted = message.split(":");
+    let connection_uuid = splitted.nth(2).unwrap().to_string();
+    LobbyReply::Start(connection_uuid)
+}
+
+fn parse_host(message: String) -> LobbyReply {
+    let mut splitted = message.split(":");
+    let vcmiserver_uuid = splitted.nth(2).unwrap().to_string();
+    let players_count: u8 = splitted
+        .next()
+        .unwrap()
+        .to_string()
+        .parse()
+        .expect("Can't parse GameMOde");
+    LobbyReply::Host(vcmiserver_uuid, players_count)
 }
 
 fn split_commands(input: &str) -> Vec<String> {

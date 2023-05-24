@@ -62,6 +62,9 @@ pub enum GuiCommand {
         password: String,
         mods: String,
     },
+    Ready {
+        room_name: String,
+    },
     ExpandLog,
     Cancel,
 }
@@ -88,7 +91,7 @@ fn main() {
         .manage(gui_sender)
         .plugin(tauri_plugin_positioner::init())
         .invoke_handler(tauri::generate_handler![
-            connect, skip, expand_log, new_room, join_room
+            connect, skip, expand_log, new_room, join_room, ready
         ])
         .setup(|app| {
             let app_handle = app.handle();
@@ -241,6 +244,18 @@ async fn join_room(
         password,
         mods,
     };
+    gui_sender.send(cmd).expect("Send Error");
+
+    Ok(())
+}
+
+#[tauri::command]
+async fn ready(
+    room_name: String,
+    gui_sender: tauri::State<'_, Sender<GuiCommand>>,
+) -> Result<(), String> {
+    info!("Join Room");
+    let cmd = GuiCommand::Ready { room_name };
     gui_sender.send(cmd).expect("Send Error");
 
     Ok(())
