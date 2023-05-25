@@ -286,7 +286,7 @@ impl Logic {
                         account_id,
                     } => {
                         self.connect_to_lobby(lobby_address, username);
-                        // self.connect_to_node(node_address, program_id, account_id, password);
+                        self.connect(node_address, program_id, account_id, password);
                     }
                     GuiCommand::Cancel => {
                         // main_window.set_fullscreen(true).unwrap();
@@ -396,6 +396,10 @@ impl Logic {
                         args.push(game_mode.to_string());
                         args.push("--uuid".to_string());
                         args.push(connection_uuid);
+                        self.log_window
+                            .set_size(Size::Logical(LogicalSize::new(0.3, 1.0)))
+                            .unwrap();
+
                         start_game(args);
                     }
                     LobbyReply::Host(_, _) => unreachable!(),
@@ -436,8 +440,12 @@ impl Logic {
 
 fn start_game(args: Vec<String>) {
     let arg = args.join(" ");
-    tracing::info!("start game ./vcmiclient {arg}");
-    Command::new("./vcmiclient")
+    let vcmiclient_path = match std::env::var("VCMICLIENT_PATH") {
+        Ok(dir_path) => dir_path,
+        Err(_) => "./vcmiclient".to_string(),
+    };
+    tracing::info!("Start game: {vcmiclient_path} {arg}");
+    Command::new(&vcmiclient_path)
         .args(&args)
         .spawn()
         .expect("Failed to spawn process");

@@ -148,11 +148,11 @@ impl LobbyClient {
                                     count = Some(players_count.clone());
                                 }
                                 LobbyReply::Start {
-                                    lobby_address,
-                                    lobby_port,
-                                    game_mode,
-                                    username,
-                                    connection_uuid,
+                                    lobby_address: _,
+                                    lobby_port: _,
+                                    game_mode: _,
+                                    username: _,
+                                    connection_uuid: _,
                                     vcmiserver_uuid,
                                     players_count,
                                 } => {
@@ -208,7 +208,6 @@ impl LobbyClient {
     }
 
     pub fn send(connection: &mut TcpStream, command: &LobbyCommand) {
-        // let command = LobbyCommand::Message("TEST TEST".to_string());
         tracing::debug!("Send command {:?} to lobby", command);
         let command = command.to_bytes();
 
@@ -281,7 +280,7 @@ impl LobbyClient {
             raw if raw.starts_with(USERS) => parse_users(raw),
             raw if raw.starts_with(MSG) => parse_message(raw),
             raw if raw.starts_with(ERROR) => parse_error(raw),
-            raw if raw.starts_with(JOIN) => parse_join(raw),
+            raw if raw.starts_with(JOIN) => self.parse_join(raw),
             raw if raw.starts_with(STATUS) => parse_status(raw),
             raw if raw.starts_with(MODS) => parse_mods(raw),
             raw if raw.starts_with(MODSOTHER) => parse_modsother(raw),
@@ -330,6 +329,15 @@ impl LobbyClient {
         self.game_mode = game_mode;
         LobbyReply::GameMode(game_mode)
     }
+
+    fn parse_join(&mut self, message: String) -> LobbyReply {
+        let mut splitted = message.split(":");
+        let room_name = splitted.nth(2).unwrap().to_string();
+        let username = splitted.next().unwrap().to_string();
+        self.username = username.clone();
+
+        LobbyReply::Joined(room_name, username)
+    }
 }
 
 fn parse_sessions(sessions: String) -> LobbyReply {
@@ -360,7 +368,7 @@ fn parse_users(users: String) -> LobbyReply {
 
     let len = len_str.parse::<usize>().unwrap();
     let mut users = vec![];
-    for i in 0..len {
+    for _i in 0..len {
         let name = splitted.next().unwrap().to_string();
 
         users.push(name);
@@ -388,14 +396,6 @@ fn parse_error(message: String) -> LobbyReply {
     let error = splitted.nth(2).unwrap().to_string();
 
     LobbyReply::ServerError(error)
-}
-
-fn parse_join(message: String) -> LobbyReply {
-    let mut splitted = message.split(":");
-    let room_name = splitted.nth(2).unwrap().to_string();
-    let username = splitted.next().unwrap().to_string();
-
-    LobbyReply::Joined(room_name, username)
 }
 
 fn parse_status(message: String) -> LobbyReply {

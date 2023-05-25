@@ -8,8 +8,8 @@ use std::{
 
 use crate::program_io::{Action, Event, GameState};
 use crossbeam_channel::{Receiver, RecvTimeoutError, Sender};
-use gclient::{EventListener, EventProcessor, GearApi, WSAddress};
-use gmeta::{Decode, Encode};
+use gclient::{EventListener, GearApi, WSAddress};
+use gmeta::Encode;
 use gstd::ActorId;
 
 pub const RECV_TIMEOUT: Duration = std::time::Duration::from_millis(1);
