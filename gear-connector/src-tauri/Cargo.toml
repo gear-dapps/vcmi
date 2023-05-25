@@ -33,7 +33,7 @@ once_cell = "1"
 tempfile = "1"
 bytes = "1"
 ipfs-api-backend-hyper = "0.6"
-tar = "0.4"
+fork = "0.1.21"
 
 # gear related
 gmeta = { git = "https://github.com/gear-tech/gear.git", rev = "5c685d0f15c412ab6ee019ceaf7ce084426dfb68" }

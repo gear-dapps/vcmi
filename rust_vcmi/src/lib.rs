@@ -161,35 +161,6 @@ pub fn load_all_from_chain() -> i32 {
     0
 }
 
-fn show_connection_dialog(selection_screen: SelectionScreen) -> i32 {
-    let gear = try_init_connection!(connection_init);
-
-    let show_dialog_command = VcmiCommand::Connect;
-
-    gear.command_sender
-        .send(show_dialog_command)
-        .expect("Panic in another thread");
-
-    let reply = gear.reply_receiver.recv().expect("Panic in another thread");
-    let is_showed = matches!(reply, VcmiReply::ConnectDialogShowed);
-    println!("Gear Connection Dialog is showed: {}", is_showed);
-    let reply = gear.reply_receiver.recv().expect("Panic in another thread");
-
-    let mut result =
-        match matches!(reply, VcmiReply::Connected) {
-            true => 1,
-            false => 0,
-        };
-
-    if matches!(selection_screen, SelectionScreen::LoadGame) {
-        let show_load_dialog = VcmiCommand::LoadAll;
-        gear.command_sender
-            .send(show_load_dialog)
-            .expect("Can't send");
-    }
-
-    result
-}
 
 fn connection_init() -> Result<Connection, std::io::Error> {
     let (command_sender, command_receiver) = bounded(1);
@@ -245,11 +216,7 @@ mod ffi {
         fn get_file_as_byte_vec(filename: String) -> Vec<u8>;
     }
 
-    extern "Rust" {
-        fn show_connection_dialog(selection_screen: SelectionScreen) -> i32;
-    }
-
-    extern "Rust" {
+      extern "Rust" {
         fn save_state_onchain(vcgm_path: String, vsgm_path: String) -> i32;
     }
 

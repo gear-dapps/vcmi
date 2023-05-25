@@ -34,7 +34,7 @@ pub enum LobbyReply {
     Sessions(Vec<Room>),
     Joined(String, String),
     Kicked(String, String),
-    Start(String),
+    Start(String, u16, u8, String, String),
     Host(String, u8),
     Status(u8, Vec<(String, String)>),
     ServerError(String),
@@ -70,12 +70,16 @@ const MODS: &str = ":>>MODS:";
 const MODSOTHER: &str = ":>>MODSOTHER:";
 const START: &str = ":>>START:";
 const HOST: &str = ":>>HOST:";
+
 pub struct LobbyClient {
     need_stop: Arc<AtomicBool>,
     connection: Option<TcpStream>,
     lobby_command_receiver: Receiver<LobbyCommand>,
     lobby_reply_sender: Sender<LobbyReply>,
     username: String,
+    address: String,
+    port: u16,
+    game_mode: u8,
 }
 
 impl LobbyClient {
@@ -90,6 +94,9 @@ impl LobbyClient {
             lobby_command_receiver,
             lobby_reply_sender,
             username: String::new(),
+            address: String::new(),
+            port: 0,
+            game_mode: 0,
         }
     }
 
@@ -122,11 +129,11 @@ impl LobbyClient {
                         let mut raw_reply = raw_reply.to_vec();
                         raw_reply.truncate(n);
                         let raw = String::from_utf8(raw_reply).expect("Can't convert reply to ut8");
-                        tracing::info!("Received from lobby: {}", raw);
+                        // tracing::info!("Received from lobby: {}", raw);
 
                         let commands = split_commands(&raw);
                         for command in commands {
-                            let reply = parse_raw_reply(command);
+                            let reply = self.parse_raw_reply(command);
 
                             lobby_reply_sender2.send(reply).expect("Send error");
                         }
@@ -167,8 +174,10 @@ impl LobbyClient {
     pub fn connect(&mut self, address: String) -> std::io::Result<()> {
         let stream = TcpStream::connect(&address)?;
         stream.set_read_timeout(Some(RECV_TIMEOUT)).unwrap();
-        self.connection = Some(stream);
+        self.address = stream.peer_addr().unwrap().ip().to_string();
+        self.port = stream.peer_addr().unwrap().port();
 
+        self.connection = Some(stream);
         Ok(())
     }
 
@@ -238,22 +247,60 @@ impl LobbyCommand {
     }
 }
 
-fn parse_raw_reply(raw: String) -> LobbyReply {
-    match raw {
-        raw if raw.starts_with(CREATED) => parse_created(raw),
-        raw if raw.starts_with(SESSIONS) => parse_sessions(raw),
-        raw if raw.starts_with(USERS) => parse_users(raw),
-        raw if raw.starts_with(MSG) => parse_message(raw),
-        raw if raw.starts_with(ERROR) => parse_error(raw),
-        raw if raw.starts_with(JOIN) => parse_join(raw),
-        raw if raw.starts_with(STATUS) => parse_status(raw),
-        raw if raw.starts_with(MODS) => parse_mods(raw),
-        raw if raw.starts_with(MODSOTHER) => parse_modsother(raw),
-        raw if raw.starts_with(GAMEMODE) => parse_gamemode(raw),
-        raw if raw.starts_with(KICK) => parse_kick(raw),
-        raw if raw.starts_with(START) => parse_start(raw),
-        raw if raw.starts_with(HOST) => parse_host(raw),
-        _ => unreachable!(),
+impl LobbyClient {
+    fn parse_raw_reply(&mut self, raw: String) -> LobbyReply {
+        match raw {
+            raw if raw.starts_with(CREATED) => parse_created(raw),
+            raw if raw.starts_with(SESSIONS) => parse_sessions(raw),
+            raw if raw.starts_with(USERS) => parse_users(raw),
+            raw if raw.starts_with(MSG) => parse_message(raw),
+            raw if raw.starts_with(ERROR) => parse_error(raw),
+            raw if raw.starts_with(JOIN) => parse_join(raw),
+            raw if raw.starts_with(STATUS) => parse_status(raw),
+            raw if raw.starts_with(MODS) => parse_mods(raw),
+            raw if raw.starts_with(MODSOTHER) => parse_modsother(raw),
+            raw if raw.starts_with(GAMEMODE) => self.parse_gamemode(raw),
+            raw if raw.starts_with(KICK) => parse_kick(raw),
+            raw if raw.starts_with(START) => self.parse_start(raw),
+            raw if raw.starts_with(HOST) => self.parse_host(raw),
+            _ => unreachable!(),
+        }
+    }
+
+    fn parse_start(&self, message: String) -> LobbyReply {
+        let mut splitted = message.split(":");
+        let connection_uuid = splitted.nth(2).unwrap().to_string();
+        LobbyReply::Start(
+            self.address.clone(),
+            self.port,
+            self.game_mode,
+            self.username.clone(),
+            connection_uuid,
+        )
+    }
+
+    fn parse_host(&self, message: String) -> LobbyReply {
+        let mut splitted = message.split(":");
+        let vcmiserver_uuid = splitted.nth(2).unwrap().to_string();
+        let players_count: u8 = splitted
+            .next()
+            .unwrap()
+            .to_string()
+            .parse()
+            .expect("Can't parse GameMOde");
+        LobbyReply::Host(vcmiserver_uuid, players_count)
+    }
+
+    fn parse_gamemode(&mut self, message: String) -> LobbyReply {
+        let mut splitted = message.split(":");
+        let game_mode: u8 = splitted
+            .nth(2)
+            .unwrap()
+            .to_string()
+            .parse()
+            .expect("Can't parse GameMOde");
+        self.game_mode = game_mode;
+        LobbyReply::GameMode(game_mode)
     }
 }
 
@@ -350,40 +397,11 @@ fn parse_modsother(_message: String) -> LobbyReply {
     LobbyReply::ClientMods
 }
 
-fn parse_gamemode(message: String) -> LobbyReply {
-    let mut splitted = message.split(":");
-    let game_mode: u8 = splitted
-        .nth(2)
-        .unwrap()
-        .to_string()
-        .parse()
-        .expect("Can't parse GameMOde");
-    LobbyReply::GameMode(game_mode)
-}
-
 fn parse_kick(message: String) -> LobbyReply {
     let mut splitted = message.split(":");
     let room_name = splitted.nth(2).unwrap().to_string();
     let username = splitted.next().unwrap().to_string();
     LobbyReply::Kicked(room_name, username)
-}
-
-fn parse_start(message: String) -> LobbyReply {
-    let mut splitted = message.split(":");
-    let connection_uuid = splitted.nth(2).unwrap().to_string();
-    LobbyReply::Start(connection_uuid)
-}
-
-fn parse_host(message: String) -> LobbyReply {
-    let mut splitted = message.split(":");
-    let vcmiserver_uuid = splitted.nth(2).unwrap().to_string();
-    let players_count: u8 = splitted
-        .next()
-        .unwrap()
-        .to_string()
-        .parse()
-        .expect("Can't parse GameMOde");
-    LobbyReply::Host(vcmiserver_uuid, players_count)
 }
 
 fn split_commands(input: &str) -> Vec<String> {

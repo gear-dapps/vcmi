@@ -153,7 +153,6 @@ impl GearClient {
         {
             let pid = *program_id;
             let program_id = pid.into();
-            
 
             let gas_limit = client
                 .calculate_handle_gas(None, program_id, action.encode(), 0, true)
@@ -166,7 +165,7 @@ impl GearClient {
                 .await
                 .expect("Error at sending Action::Save");
             tracing::info!("Send Action to Gear: {:?}", action);
-            
+
             // !TODO. Code that works with EventListener doesn't work:
 
             // tracing::info!("Action Succeed");
@@ -187,7 +186,9 @@ impl GearClient {
 
             // let reply = GearReply::Event(decoded_event);
 
-            self.gear_reply_sender.send(GearReply::Event(Event::Saved)).unwrap();
+            self.gear_reply_sender
+                .send(GearReply::Event(Event::Saved))
+                .unwrap();
         } else {
             tracing::warn!("Can't connect to Gear Blockchain Node")
         }
@@ -221,8 +222,7 @@ impl GearClient {
                                 hex::decode(&program_id[2..]).expect("Can't decode Program ID");
                             let mut program_id = [0u8; 32];
                             program_id.copy_from_slice(&pid);
-                            
-                            
+
                             match client.read_metahash(program_id.into()).await {
                                 Ok(hash) => {
                                     tracing::info!("Program hash: {:?}", hash);

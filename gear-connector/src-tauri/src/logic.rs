@@ -1,6 +1,9 @@
-use std::sync::{
-    atomic::{AtomicBool, Ordering::Relaxed},
-    Arc,
+use std::{
+    process::{Command, Stdio},
+    sync::{
+        atomic::{AtomicBool, Ordering::Relaxed},
+        Arc,
+    },
 };
 
 use crossbeam_channel::{Receiver, RecvTimeoutError, Sender};
@@ -362,14 +365,36 @@ impl Logic {
                         .main_window
                         .emit("kicked", (room_name, username))
                         .unwrap(),
-                    LobbyReply::Start(connection_uuid) => {
-                        tracing::debug!("connection_uuid: {}", connection_uuid,)
+                    LobbyReply::Start(address, port, game_mode, username, connection_uuid) => {
+                        tracing::debug!("connection_uuid: {}", connection_uuid);
+                        let mut args = vec![];
+                        args.push("--lobby".to_string());
+                        args.push("--lobby-address".to_string());
+                        args.push(address);
+                        args.push("--lobby-port".to_string());
+                        args.push(port.to_string());
+                        args.push("--lobby-username".to_string());
+                        args.push(username);
+                        args.push("--lobby-gamemode".to_string());
+                        args.push(game_mode.to_string());
+                        args.push("--uuid".to_string());
+                        args.push(connection_uuid);
+                        start_game(args);
                     }
-                    LobbyReply::Host(vcmiserver_uuid, players_count) => tracing::debug!(
-                        "vcmiserver_uuid: {}, players_count: {}",
-                        vcmiserver_uuid,
-                        players_count
-                    ),
+                    LobbyReply::Host(vcmiserver_uuid, players_count) => {
+                        tracing::debug!(
+                            "vcmiserver_uuid: {}, players_count: {}",
+                            vcmiserver_uuid,
+                            players_count
+                        );
+                        let mut args = vec![];
+                        args.push("--lobby-host".to_string());
+                        args.push("--lobby-uuid".to_string());
+                        args.push(vcmiserver_uuid);
+                        args.push("--lobby-connections".to_string());
+                        args.push(players_count.to_string());
+                        start_game(args);
+                    }
                     LobbyReply::Status(users_count, statuses) => self
                         .main_window
                         .emit("status", (users_count, statuses))
@@ -403,4 +428,13 @@ impl Logic {
             }
         }
     }
+}
+
+fn start_game(args: Vec<String>) {
+    let arg = args.connect(" ");
+    tracing::info!("start game ./vcmiclient {arg}");
+    Command::new("./vcmiclient")
+        .args(&args)
+        .spawn()
+        .expect("Failed to spawn process");
 }

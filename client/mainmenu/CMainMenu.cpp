@@ -324,11 +324,11 @@ void CMainMenu::openLobby(ESelectionScreen screenType, bool host, const std::vec
 	CSH->resetStateForLobby(screenType == ESelectionScreen::newGame ? StartInfo::NEW_GAME : StartInfo::LOAD_GAME, names);
 	CSH->screenType = screenType;
 	CSH->loadMode = loadMode;
-	const auto isConnected = show_connection_dialog(static_cast<SelectionScreen>(screenType));
-	logGlobal->warn("openLobby Gear Proxy: isConnected = %d", isConnected);
-	if (!isConnected) {
+	// const auto isConnected = show_connection_dialog(static_cast<SelectionScreen>(screenType));
+	// logGlobal->warn("openLobby Gear Proxy: isConnected = %d", isConnected);
+	// if (!isConnected) {
     	GH.pushIntT<CSimpleJoinScreen>(host);
-	}
+	// }
 }
 
 void CMainMenu::openCampaignLobby(const std::string & campaignFileName)

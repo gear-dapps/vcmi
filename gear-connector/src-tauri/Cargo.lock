@@ -1424,6 +1424,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "00b0228411908ca8685dba7fc2cdd70ec9990a6e753e89b6ac91a84c40fbaf4b"
 
 [[package]]
+name = "fork"
+version = "0.1.21"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eaf4b001d25ec51f755157ecffa208b342747ea9a4365df5438b12925c7f0056"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "form_urlencoded"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1689,6 +1698,7 @@ version = "0.0.0"
 dependencies = [
  "bytes",
  "crossbeam-channel",
+ "fork",
  "futures",
  "gclient",
  "gear-connector-api",
@@ -1701,7 +1711,6 @@ dependencies = [
  "scale-info",
  "serde",
  "serde_json",
- "tar",
  "tauri",
  "tauri-build",
  "tauri-plugin-positioner",
