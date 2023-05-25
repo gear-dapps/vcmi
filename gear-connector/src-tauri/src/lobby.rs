@@ -34,7 +34,15 @@ pub enum LobbyReply {
     Sessions(Vec<Room>),
     Joined(String, String),
     Kicked(String, String),
-    Start(String, u16, u8, String, String),
+    Start {
+        lobby_address: String,
+        lobby_port: u16,
+        game_mode: u8,
+        username: String,
+        connection_uuid: String,
+        vcmiserver_uuid: Option<String>,
+        players_count: Option<u8>,
+    },
     Host(String, u8),
     Status(u8, Vec<(String, String)>),
     ServerError(String),
@@ -110,7 +118,6 @@ impl LobbyClient {
         while !need_stop.load(Relaxed) {
             let command: Result<LobbyCommand, RecvTimeoutError> =
                 self.lobby_command_receiver.recv_timeout(RECV_TIMEOUT);
-            // tracing::info!("send thread");
             match command {
                 Ok(command) => {
                     self.process_command(command);
@@ -123,7 +130,6 @@ impl LobbyClient {
             }
 
             if let Some(mut stream) = self.connection.as_ref() {
-                // tracing::info!("read");
                 match stream.read(&mut raw_reply) {
                     Ok(n) => {
                         let mut raw_reply = raw_reply.to_vec();
@@ -132,10 +138,30 @@ impl LobbyClient {
                         // tracing::info!("Received from lobby: {}", raw);
 
                         let commands = split_commands(&raw);
+                        let mut server_uuid = None;
+                        let mut count = None;
                         for command in commands {
-                            let reply = self.parse_raw_reply(command);
-
-                            lobby_reply_sender2.send(reply).expect("Send error");
+                            let mut reply = self.parse_raw_reply(command);
+                            match &mut reply {
+                                LobbyReply::Host(uuid, players_count) => {
+                                    server_uuid = Some(uuid.clone());
+                                    count = Some(players_count.clone());
+                                }
+                                LobbyReply::Start {
+                                    lobby_address,
+                                    lobby_port,
+                                    game_mode,
+                                    username,
+                                    connection_uuid,
+                                    vcmiserver_uuid,
+                                    players_count,
+                                } => {
+                                    *vcmiserver_uuid = server_uuid.clone();
+                                    *players_count = count;
+                                    lobby_reply_sender2.send(reply).expect("Send error");
+                                }
+                                _ => lobby_reply_sender2.send(reply).expect("Send error"),
+                            }
                         }
                     }
                     Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
@@ -261,8 +287,8 @@ impl LobbyClient {
             raw if raw.starts_with(MODSOTHER) => parse_modsother(raw),
             raw if raw.starts_with(GAMEMODE) => self.parse_gamemode(raw),
             raw if raw.starts_with(KICK) => parse_kick(raw),
-            raw if raw.starts_with(START) => self.parse_start(raw),
             raw if raw.starts_with(HOST) => self.parse_host(raw),
+            raw if raw.starts_with(START) => self.parse_start(raw),
             _ => unreachable!(),
         }
     }
@@ -270,13 +296,15 @@ impl LobbyClient {
     fn parse_start(&self, message: String) -> LobbyReply {
         let mut splitted = message.split(":");
         let connection_uuid = splitted.nth(2).unwrap().to_string();
-        LobbyReply::Start(
-            self.address.clone(),
-            self.port,
-            self.game_mode,
-            self.username.clone(),
+        LobbyReply::Start {
+            lobby_address: self.address.clone(),
+            lobby_port: self.port,
+            game_mode: self.game_mode,
+            username: self.username.clone(),
             connection_uuid,
-        )
+            vcmiserver_uuid: None,
+            players_count: None,
+        }
     }
 
     fn parse_host(&self, message: String) -> LobbyReply {
