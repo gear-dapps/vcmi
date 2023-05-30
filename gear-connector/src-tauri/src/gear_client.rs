@@ -213,9 +213,9 @@ impl GearClient {
                     .expect("Error in another thread");
                 if guard.is_none() {
                     let suri = format!("{account_id}:{password}");
-                    // let client = GearApi::init_with(address, suri).await;
+                    let client = GearApi::init_with(address, suri).await;
                     // let client = GearApi::dev().await;
-                    let client = GearApi::init(address).await;
+                    // let client = GearApi::init(address).await;
                     match client {
                         Ok(client) => {
                             let pid =

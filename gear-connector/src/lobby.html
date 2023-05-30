@@ -45,17 +45,19 @@
         <div data-tauri-drag-region class="row py-1 text-start">
             <div class="col mx-1">
                 <div class="input-group mb-3">
-                    <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown"
-                        aria-expanded="false" id="node-address">
-                        wss://rpc-node.gear-tech.io
-                    </button>
+                    <div class="dropdown">
+                        <button class="btn btn-outline-primary dropdown-toggle" type="button" id="node-address"
+                            data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            wss://rpc-node.gear-tech.io
+                        </button>
+                        <div class="dropdown-menu" id="node-addresses" aria-labelledby="node-address">
+                            <a class="dropdown-item" href="#">ws://localhost:9944/</a>
+                            <a class="dropdown-item" href="#">wss://rpc-node.gear-tech.io</a>
+                            <a class="dropdown-item" href="#">wss://rpc.vara-network.io</a>
+                            <a class="dropdown-item" href="#">wss://node-workshop.gear.rs</a>
+                        </div>
+                    </div>
 
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item active" href="#">ws://localhost:9944/</a></li>
-                        <li><a class="dropdown-item" href="#">wss://rpc-node.gear-tech.io</a></li>
-                        <li><a class="dropdown-item" href="#">wss://rpc.vara-network.io</a></li>
-                        <li><a class="dropdown-item" href="#">wss://node-workshop.gear.rs</a></li>
-                    </ul>
                     <input class="form-control" type="text" id="program-id" placeholder="Program ID"
                         aria-label=".form-control-lg example"
                         value="0x7ae24d81843f99ec526f651c79d5eb04b23042cb7953902019066018045cbcf8">
@@ -107,7 +109,6 @@
                                 </button>
                             </div>
                         </div>
-
                     </div>
                 </div>
 
@@ -157,15 +158,15 @@
                                 type="button">Maximum players</button>
                             <button class="btn btn-outline-primary dropdown-toggle" type="button"
                                 data-bs-toggle="dropdown" aria-expanded="false" id="room-max-players">2</button>
-                            <ul class="dropdown-menu">
-                                <li><a class="dropdown-item active" href="#">2</a></li>
-                                <li><a class="dropdown-item" href="#">3</a></li>
-                                <li><a class="dropdown-item" href="#">4</a></li>
-                                <li><a class="dropdown-item" href="#">5</a></li>
-                                <li><a class="dropdown-item" href="#">6</a></li>
-                                <li><a class="dropdown-item" href="#">7</a></li>
-                                <li><a class="dropdown-item" href="#">8</a></li>
-                            </ul>
+                            <div class="dropdown-menu" id="players-count" aria-labelledby="room-max-players">
+                                <a class="dropdown-item" href="#">2</a>
+                                <a class="dropdown-item" href="#">3</a>
+                                <a class="dropdown-item" href="#">4</a>
+                                <a class="dropdown-item" href="#">5</a>
+                                <a class="dropdown-item" href="#">6</a>
+                                <a class="dropdown-item" href="#">7</a>
+                                <a class="dropdown-item" href="#">8</a>
+                            </div>
                         </div>
 
                     </div>

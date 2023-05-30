@@ -332,6 +332,18 @@ impl Logic {
                             .send(lobby_command)
                             .expect("Send Error");
                     }
+                    GuiCommand::HostMode { mode } => {
+                        let lobby_command = LobbyCommand::HostMode(mode);
+                        self.lobby_command_sender
+                            .send(lobby_command)
+                            .expect("Send Error");
+                    }
+                    GuiCommand::Leave { room_name } => {
+                        let lobby_command = LobbyCommand::Leave(room_name);
+                        self.lobby_command_sender
+                            .send(lobby_command)
+                            .expect("Send Error");
+                    }
                 }
             }
             Err(e) if e == RecvTimeoutError::Timeout => {}

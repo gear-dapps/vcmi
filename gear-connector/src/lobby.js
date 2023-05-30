@@ -10,7 +10,7 @@ let passwordInputEl;
 
 let roomNameEl;
 let roomPasswordEl;
-let roomMaxPlayers;
+let roomMaxPlayersEl;
 
 async function connect() {
   await invoke("connect", {
@@ -32,11 +32,12 @@ async function connect() {
 // {CREATE, "<NEW>%1<PSWD>%2<COUNT>%3<MODS>%4"},
 
 async function newRoom() {
-  console.log("NewRoom", roomNameEl.value, roomPasswordEl.value, roomMaxPlayers.value)
+  console.log(roomMaxPlayersEl.innerText, roomMaxPlayersEl.value)
+  console.log("NewRoom", roomNameEl.value, roomPasswordEl.value, roomMaxPlayersEl.value)
   await invoke("new_room", {
     roomName: roomNameEl.value,
     password: roomPasswordEl.value,
-    maxPlayers: 2, // TODO!
+    maxPlayers: parseInt(roomMaxPlayersEl.innerText),
     mods: "h3-for-vcmi-englisation&1.2;vcmi&1.2;vcmi-extras&3.3.6;vcmi-extras.arrowtowericons&1.1;vcmi-extras.battlefieldactions&0.2;vcmi-extras.bonusicons&0.8.1;vcmi-extras.bonusicons.bonus icons&0.8;vcmi-extras.bonusicons.immunity icons&0.6;vcmi-extras.extendedrmg&1.2;vcmi-extras.extraresolutions&1.0;vcmi-extras.quick-exchange&1.0"
   });
 }
@@ -57,6 +58,20 @@ async function ready(roomName) {
   });
 }
 
+async function leave(roomName) {
+  console.log("leave", roomName);
+  await invoke("leave", {
+    roomName: roomName,
+  });
+}
+
+async function hostmode(mode) {
+  console.log("hostmode", mode);
+  await invoke("hostmode", {
+    mode: mode,
+  });
+}
+
 window.addEventListener("DOMContentLoaded", () => {
   lobbyAddressInputEl = document.querySelector("#lobby-address")
   usernameInputEl = document.querySelector("#username")
@@ -68,7 +83,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
   roomNameEl = document.querySelector("#room-name")
   roomPasswordEl = document.querySelector("#room-password")
-  roomMaxPlayers = document.querySelector("#room-max-players")
+  roomMaxPlayersEl = document.querySelector("#room-max-players")
   document.querySelector("#new-room-button").addEventListener("click", () => newRoom());
 });
 
@@ -112,7 +127,7 @@ await listen('addSessions', (event) => {
   let sessions = event.payload;
   console.log("add Session:", sessions);
   const div = document.getElementById("sessions");
-  while (div.firstChild !== null) {
+  while (div && div.firstChild !== null) {
     div.removeChild(div.firstChild)
   }
   for (let i = 0; i < sessions.length; ++i) {
@@ -129,10 +144,9 @@ await listen('addSessions', (event) => {
     badge.classList.add("badge")
     badge.classList.add("text-bg-light")
     badge.classList.add("rounded-pill")
-    badge.classLi
     badge.textContent = sessions[i].joined + "/" + sessions[i].total
     button.appendChild(badge)
-    
+
     div.appendChild(button)
   }
 })
@@ -234,25 +248,22 @@ await listen('joined', (event) => {
 await listen('updateGameMode', (event) => {
   let game_mod = event.payload;
   console.log("game_mod:", game_mod);
-
+  document.getElementById("new-game").checked = game_mod == 0;
+  document.getElementById("load-game").checked = game_mod == 1;
 })
 
-
-const dropdownItems = document.querySelector('.dropdown-item');
-const dropdownButton = document.querySelector('#node-address');
-
-let activeItem = null;
-
-dropdownItems.forEach(item => {
-  item.addEventListener('click', () => {
-    if (activeItem) {
-      activeItem.classList.remove('active');
+function setupDropdownMenu(buttonId, menuId) {
+  const dropdownButton = document.querySelector('#' + buttonId);
+  const dropdownMenu = document.querySelector('#' + menuId);
+  dropdownMenu.addEventListener('click', function (e) {
+    if (e.target.classList.contains('dropdown-item')) {
+      const selectedItem = e.target.textContent;
+      dropdownButton.textContent = selectedItem;
     }
-    item.classList.add('active');
-    dropdownButton.textContent = item.textContent;
-    activeItem = item;
   });
-});
+}
+setupDropdownMenu("node-address", "node-addresses");
+setupDropdownMenu("room-max-players", "players-count");
 
 
 function createPlayersInRoomWidget(parentElement, roomName) {
@@ -292,8 +303,10 @@ function createPlayersInRoomWidget(parentElement, roomName) {
   input1.className = "form-check-input";
   input1.type = "radio";
   input1.name = "inlineRadioOptions";
-  input1.id = "inlineRadio1";
+  input1.id = "new-game";
   input1.value = "option1";
+  input1.checked = true
+  input1.onchange = () =>  hostmode(0)
 
   const label1 = document.createElement("label");
   label1.className = "form-check-label";
@@ -307,8 +320,9 @@ function createPlayersInRoomWidget(parentElement, roomName) {
   input2.className = "form-check-input";
   input2.type = "radio";
   input2.name = "inlineRadioOptions";
-  input2.id = "inlineRadio2";
+  input2.id = "load-game";
   input2.value = "option2";
+  input2.onchange = () => hostmode(1)
 
   const label2 = document.createElement("label");
   label2.className = "form-check-label";
@@ -328,6 +342,7 @@ function createPlayersInRoomWidget(parentElement, roomName) {
   buttonLeave.className = "btn btn-light";
   buttonLeave.setAttribute("data-bs-toggle", "modal");
   buttonLeave.innerHTML = '<i class="bi bi-plus"></i>Leave';
+  buttonLeave.addEventListener("click", () => leave(roomName));
 
   const buttonReady = document.createElement("button");
   buttonReady.type = "button";

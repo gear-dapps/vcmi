@@ -65,6 +65,12 @@ pub enum GuiCommand {
     Ready {
         room_name: String,
     },
+    Leave {
+        room_name: String,
+    },
+    HostMode {
+        mode: u8,
+    },
     ExpandLog,
     Cancel,
 }
@@ -91,7 +97,7 @@ fn main() {
         .manage(gui_sender)
         .plugin(tauri_plugin_positioner::init())
         .invoke_handler(tauri::generate_handler![
-            connect, skip, expand_log, new_room, join_room, ready
+            connect, skip, expand_log, new_room, join_room, ready, hostmode, leave
         ])
         .setup(|app| {
             let app_handle = app.handle();
@@ -256,6 +262,30 @@ async fn ready(
 ) -> Result<(), String> {
     info!("Join Room");
     let cmd = GuiCommand::Ready { room_name };
+    gui_sender.send(cmd).expect("Send Error");
+
+    Ok(())
+}
+
+#[tauri::command]
+async fn leave(
+    room_name: String,
+    gui_sender: tauri::State<'_, Sender<GuiCommand>>,
+) -> Result<(), String> {
+    info!("Leave Room");
+    let cmd = GuiCommand::Leave { room_name };
+    gui_sender.send(cmd).expect("Send Error");
+
+    Ok(())
+}
+
+#[tauri::command]
+async fn hostmode(
+    mode: u8,
+    gui_sender: tauri::State<'_, Sender<GuiCommand>>,
+) -> Result<(), String> {
+    info!("Host mode {mode}");
+    let cmd = GuiCommand::HostMode { mode };
     gui_sender.send(cmd).expect("Send Error");
 
     Ok(())
