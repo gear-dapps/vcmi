@@ -102,6 +102,7 @@ await listen('showRooms', (event) => {
   let bsCollapse = new bootstrap.Collapse(roomView);
   console.log("show Rooms:", users);
   bsCollapse.toggle();
+  document.getElementById("connect-button").hidden = true
 })
 
 await listen('addUsers', (event) => {
@@ -242,6 +243,7 @@ await listen('joined', (event) => {
     }
     createPlayersInRoomWidget(div, room_name)
   }
+  
   console.log("joined:", joined)
 })
 

@@ -254,16 +254,9 @@ impl Logic {
         let reply = self.gear_reply_receiver.recv().expect("Recv error");
 
         match reply {
-            GearReply::Connected => {
-                // self.main_window.center().unwrap();
-                // self.main_window.hide().unwrap();
-                // self.log_window.show().unwrap();
-
-                // self.log_window.move_window(Position::TopRight).unwrap();
-                // self.vcmi_reply_sender
-                //     .send(VcmiReply::ConnectDialogShowed)
-                //     .expect("Error in another thread");
-                tracing::info!("Connected to node");
+            GearReply::Connected { username } => {
+                tracing::info!("Connected to node. Account ID: {username}");
+                self.log_window.emit("update_account_id", username).unwrap();
             }
             GearReply::NotConnected(reason) => self.main_window.emit("alert", reason).unwrap(),
             GearReply::ProgramNotFound { program_id } => {

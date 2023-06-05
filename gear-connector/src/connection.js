@@ -49,6 +49,13 @@ await listen('update_balance', (event) => {
     balance.innerText = n
 })
 
+await listen('update_account_id', (event) => {
+    console.log("js: log: " + event)
+    let incoming = event.payload;
+    let accountId = document.getElementById("account-id")
+    accountId.innerText = incoming
+})
+
 function feedReducer(args) {
     return new Promise((res, rej) => {
         res(args);

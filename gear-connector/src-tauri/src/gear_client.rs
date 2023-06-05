@@ -29,7 +29,7 @@ pub enum GearCommand {
 
 #[derive(Debug)]
 pub enum GearReply {
-    Connected,
+    Connected { username: String },
     NotConnected(String),
     ProgramNotFound { program_id: String },
     Event(Event),
@@ -215,10 +215,14 @@ impl GearClient {
                     .expect("Error in another thread");
                 if guard.is_none() {
                     let client = if account_id.is_empty() {
-                        tracing::debug!("Init GEAR API as default Alice user, address: {:?}", address);
+                        tracing::debug!(
+                            "Init GEAR API as default Alice user, address: {:?}",
+                            address
+                        );
                         GearApi::init(address).await
                     } else {
-                        let suri = format!("{account_id}:{password}");
+                        // let suri = format!("{account_id}:{password}");
+                        let suri = account_id;
                         tracing::debug!("Init GEAR API as {}, address: {:?}", &suri, address);
                         GearApi::init_with(address, suri).await
                     };
@@ -237,9 +241,14 @@ impl GearClient {
                                         program_id,
                                         listener: client.subscribe().await.unwrap(),
                                     };
+                                    let username = gear_connection.client.account_id().clone();
+                                    tracing::debug!("{:x?}", username.encode());
                                     guard.replace(gear_connection);
+
                                     self.gear_reply_sender
-                                        .send(GearReply::Connected)
+                                        .send(GearReply::Connected {
+                                            username: username.to_string(),
+                                        })
                                         .expect("Panic in another thread");
                                 }
                                 Err(err) => {
