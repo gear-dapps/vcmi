@@ -230,9 +230,18 @@ impl Logic {
         }
     }
 
-    fn connect(&self, address: String, program_id: String, account_id: String, password: String) {
-        // let address = WSAddress::new("ws://localhost", 9944);
-        let address = WSAddress::new(address, 443);
+    fn connect_to_node(
+        &self,
+        address: String,
+        program_id: String,
+        account_id: String,
+        password: String,
+    ) {
+        let port = match address.starts_with("ws://localhost") {
+            true => 9944,
+            false => 443,
+        };
+        let address = WSAddress::new(address, port);
         self.gear_command_sender
             .send(GearCommand::ConnectToNode {
                 address,
@@ -246,14 +255,15 @@ impl Logic {
 
         match reply {
             GearReply::Connected => {
-                self.main_window.center().unwrap();
-                self.main_window.hide().unwrap();
-                self.log_window.show().unwrap();
+                // self.main_window.center().unwrap();
+                // self.main_window.hide().unwrap();
+                // self.log_window.show().unwrap();
 
-                self.log_window.move_window(Position::TopRight).unwrap();
-                self.vcmi_reply_sender
-                    .send(VcmiReply::ConnectDialogShowed)
-                    .expect("Error in another thread");
+                // self.log_window.move_window(Position::TopRight).unwrap();
+                // self.vcmi_reply_sender
+                //     .send(VcmiReply::ConnectDialogShowed)
+                //     .expect("Error in another thread");
+                tracing::info!("Connected to node");
             }
             GearReply::NotConnected(reason) => self.main_window.emit("alert", reason).unwrap(),
             GearReply::ProgramNotFound { program_id } => {
@@ -265,7 +275,7 @@ impl Logic {
 
     fn connect_to_lobby(&mut self, address: String, username: String) {
         self.lobby_command_sender
-            .send(LobbyCommand::Connect(address))
+            .send(LobbyCommand::Connect(address, username.clone()))
             .expect("Send error");
         self.lobby_command_sender
             .send(LobbyCommand::Greeting(username, VCMI_VERSION.to_string()))
@@ -286,7 +296,7 @@ impl Logic {
                         account_id,
                     } => {
                         self.connect_to_lobby(lobby_address, username);
-                        self.connect(node_address, program_id, account_id, password);
+                        self.connect_to_node(node_address, program_id, account_id, password);
                     }
                     GuiCommand::Cancel => {
                         // main_window.set_fullscreen(true).unwrap();
@@ -412,7 +422,11 @@ impl Logic {
                             .set_size(Size::Logical(LogicalSize::new(0.3, 1.0)))
                             .unwrap();
 
+                        std::thread::sleep(std::time::Duration::from_millis(1));
+                        self.log_window.move_window(Position::TopRight).unwrap();
+
                         start_game(args);
+                        self.log_window.show().unwrap();
                     }
                     LobbyReply::Host(_, _) => unreachable!(),
                     LobbyReply::Status(users_count, statuses) => self

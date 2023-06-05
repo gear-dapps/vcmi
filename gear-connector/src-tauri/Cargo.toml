@@ -36,11 +36,11 @@ ipfs-api-backend-hyper = "0.6"
 fork = "0.1.21"
 
 # gear related
-gmeta = { git = "https://github.com/gear-tech/gear.git", rev = "5c685d0f15c412ab6ee019ceaf7ce084426dfb68" }
-gstd = { git = "https://github.com/gear-tech/gear.git", features = ["debug"], rev = "5c685d0f15c412ab6ee019ceaf7ce084426dfb68" }
+gmeta = { git = "https://github.com/gear-tech/gear.git", rev = "78dfa07" }
+gstd = { git = "https://github.com/gear-tech/gear.git", features = ["debug"], rev = "78dfa07" }
 scale-info = { version = "2", default-features = false }
 parity-scale-codec = { version = "3", default-features = false }
-gclient = { git = "https://github.com/gear-tech/gear.git", rev = "5c685d0f15c412ab6ee019ceaf7ce084426dfb68" }
+gclient = { git = "https://github.com/gear-tech/gear.git", rev = "78dfa07" }
 
 gear-connector-api = { path = "../../gear-connector-api" }
 

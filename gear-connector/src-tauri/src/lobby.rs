@@ -12,7 +12,7 @@ use std::{
 
 #[derive(Debug)]
 pub enum LobbyCommand {
-    Connect(String),
+    Connect(String, String),
     Greeting(String, String),
     Username(String),
     Message(String),
@@ -151,13 +151,14 @@ impl LobbyClient {
                                     lobby_address: _,
                                     lobby_port: _,
                                     game_mode: _,
-                                    username: _,
+                                    username,
                                     connection_uuid: _,
                                     vcmiserver_uuid,
                                     players_count,
                                 } => {
                                     *vcmiserver_uuid = server_uuid.clone();
                                     *players_count = count;
+                                    *username = self.username.clone();
                                     lobby_reply_sender2.send(reply).expect("Send error");
                                 }
                                 _ => lobby_reply_sender2.send(reply).expect("Send error"),
@@ -183,8 +184,8 @@ impl LobbyClient {
     pub fn process_command(&mut self, command: LobbyCommand) {
         tracing::info!("process lobby command(): {:?}", command);
         match command {
-            LobbyCommand::Connect(address) => {
-                self.connect(address).expect("Can't connect to lobby");
+            LobbyCommand::Connect(address, username) => {
+                self.connect(address, username).expect("Can't connect to lobby");
                 self.lobby_reply_sender
                     .send(LobbyReply::Connected)
                     .expect("Can't send");
@@ -197,13 +198,14 @@ impl LobbyClient {
         }
     }
 
-    pub fn connect(&mut self, address: String) -> std::io::Result<()> {
+    pub fn connect(&mut self, address: String, username: String) -> std::io::Result<()> {
         let stream = TcpStream::connect(&address)?;
         stream.set_read_timeout(Some(RECV_TIMEOUT)).unwrap();
         self.address = stream.peer_addr().unwrap().ip().to_string();
         self.port = stream.peer_addr().unwrap().port();
 
         self.connection = Some(stream);
+        self.username = username;
         Ok(())
     }
 
@@ -267,7 +269,7 @@ impl LobbyCommand {
             LobbyCommand::HostMode(host_mode) => {
                 format!("<HOSTMODE>{}", host_mode).as_bytes().to_vec()
             }
-            LobbyCommand::Connect(_address) => unreachable!(),
+            LobbyCommand::Connect(_address, _username) => unreachable!(),
         }
     }
 }
@@ -334,7 +336,6 @@ impl LobbyClient {
         let mut splitted = message.split(":");
         let room_name = splitted.nth(2).unwrap().to_string();
         let username = splitted.next().unwrap().to_string();
-        self.username = username.clone();
 
         LobbyReply::Joined(room_name, username)
     }

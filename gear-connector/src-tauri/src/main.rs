@@ -211,7 +211,7 @@ async fn skip(gui_sender: tauri::State<'_, Sender<GuiCommand>>) -> Result<(), St
 #[tauri::command]
 async fn expand_log(gui_sender: tauri::State<'_, Sender<GuiCommand>>) -> Result<(), String> {
     let cmd = GuiCommand::ExpandLog;
-    gui_sender.send(cmd).unwrap();
+    // gui_sender.send(cmd).unwrap();
 
     Ok(())
 }

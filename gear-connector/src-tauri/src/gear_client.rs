@@ -203,19 +203,25 @@ impl GearClient {
                 password,
             } => {
                 tracing::info!(
-                    "Process GUI command ConnectToNode address: {:?}, Program ID: {}",
+                    "Process GUI command ConnectToNode address: {:?}, Program ID: {}, mnemonic_phrase: {}, password: {}",
                     address,
-                    program_id
+                    program_id,
+                    account_id,
+                    password
                 );
                 let mut guard = self
                     .gear_connection
                     .write()
                     .expect("Error in another thread");
                 if guard.is_none() {
-                    let suri = format!("{account_id}:{password}");
-                    let client = GearApi::init_with(address, suri).await;
-                    // let client = GearApi::dev().await;
-                    // let client = GearApi::init(address).await;
+                    let client = if account_id.is_empty() {
+                        tracing::debug!("Init GEAR API as default Alice user, address: {:?}", address);
+                        GearApi::init(address).await
+                    } else {
+                        let suri = format!("{account_id}:{password}");
+                        tracing::debug!("Init GEAR API as {}, address: {:?}", &suri, address);
+                        GearApi::init_with(address, suri).await
+                    };
                     match client {
                         Ok(client) => {
                             let pid =
