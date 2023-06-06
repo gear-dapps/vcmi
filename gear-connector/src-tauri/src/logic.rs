@@ -362,9 +362,13 @@ impl Logic {
             Ok(lobby_reply) => {
                 tracing::debug!("Process Lobby Reply: {:?}", lobby_reply);
                 match lobby_reply {
-                    LobbyReply::Connected => {
-                        tracing::debug!("Connected to lobby");
-                        self.main_window.emit("showRooms", "").unwrap();
+                    LobbyReply::Connected { error } => {
+                        if error.is_empty() {
+                            tracing::debug!("Connected to lobby");
+                            self.main_window.emit("showRooms", "").unwrap();
+                        } else {
+                            self.main_window.emit("alert", error).unwrap();
+                        }
                     }
                     LobbyReply::Created(room_name) => {
                         self.main_window.emit("created", room_name).unwrap()

@@ -49,8 +49,8 @@
         "title": "gear-online",
         "label": "lobby",
         "url": "lobby.html",
-        "width": 1024,
-        "height": 768
+        "width": 1280,
+        "height": 800
       },
       {
         "transparent": true,
@@ -61,9 +61,7 @@
         "resizable": true,
         "title": "gear-online",
         "label": "log",
-        "url": "connection_view.html",
-        "width": 580,
-        "height": 800
+        "url": "connection_view.html"
       }
     ]
   }

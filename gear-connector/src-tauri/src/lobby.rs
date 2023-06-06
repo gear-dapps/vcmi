@@ -29,7 +29,9 @@ pub enum LobbyCommand {
 
 #[derive(Debug)]
 pub enum LobbyReply {
-    Connected,
+    Connected {
+        error: String,
+    },
     Created(String),
     Sessions(Vec<Room>),
     Joined(String, String),
@@ -135,7 +137,6 @@ impl LobbyClient {
                         let mut raw_reply = raw_reply.to_vec();
                         raw_reply.truncate(n);
                         let raw = String::from_utf8(raw_reply).expect("Can't convert reply to ut8");
-                        // tracing::info!("Received from lobby: {}", raw);
 
                         let commands = split_commands(&raw);
                         let mut server_uuid = None;
@@ -185,10 +186,13 @@ impl LobbyClient {
         tracing::info!("process lobby command(): {:?}", command);
         match command {
             LobbyCommand::Connect(address, username) => {
-                self.connect(address, username).expect("Can't connect to lobby");
+                let error = match self.connect(address, username) {
+                    Ok(()) => String::new(),
+                    Err(error) => format!("Lobby error:\n{}", error),
+                };
                 self.lobby_reply_sender
-                    .send(LobbyReply::Connected)
-                    .expect("Can't send");
+                    .send(LobbyReply::Connected { error })
+                    .expect("Can't send")
             }
             command => {
                 if let Some(mut connection) = self.connection.as_mut() {

@@ -201,7 +201,6 @@ async fn connect(
 
 #[tauri::command]
 async fn skip(gui_sender: tauri::State<'_, Sender<GuiCommand>>) -> Result<(), String> {
-    info!("Skip");
     let cmd = GuiCommand::Cancel;
     gui_sender.send(cmd).unwrap();
 
@@ -224,7 +223,6 @@ async fn new_room(
     mods: String,
     gui_sender: tauri::State<'_, Sender<GuiCommand>>,
 ) -> Result<(), String> {
-    info!("New Room");
     let cmd = GuiCommand::NewRoom {
         room_name,
         password,
@@ -243,7 +241,6 @@ async fn join_room(
     mods: String,
     gui_sender: tauri::State<'_, Sender<GuiCommand>>,
 ) -> Result<(), String> {
-    info!("Join Room");
     let mods = "h3-for-vcmi-englisation&1.2;vcmi&1.2;vcmi-extras&3.3.6;vcmi-extras.arrowtowericons&1.1;vcmi-extras.battlefieldactions&0.2;vcmi-extras.bonusicons&0.8.1;vcmi-extras.bonusicons.bonus icons&0.8;vcmi-extras.bonusicons.immunity icons&0.6;vcmi-extras.extendedrmg&1.2;vcmi-extras.extraresolutions&1.0;vcmi-extras.quick-exchange&1.0".to_string();
     let cmd = GuiCommand::JoinRoom {
         room_name,
@@ -260,7 +257,6 @@ async fn ready(
     room_name: String,
     gui_sender: tauri::State<'_, Sender<GuiCommand>>,
 ) -> Result<(), String> {
-    info!("Join Room");
     let cmd = GuiCommand::Ready { room_name };
     gui_sender.send(cmd).expect("Send Error");
 
@@ -272,7 +268,6 @@ async fn leave(
     room_name: String,
     gui_sender: tauri::State<'_, Sender<GuiCommand>>,
 ) -> Result<(), String> {
-    info!("Leave Room");
     let cmd = GuiCommand::Leave { room_name };
     gui_sender.send(cmd).expect("Send Error");
 

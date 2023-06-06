@@ -94,7 +94,7 @@ await listen('alert', (event) => {
   let alert = document.getElementById("alert");
   alert.hidden = false
 
-  document.getElementById("connection-message").innerText = "Program not found. Program ID:\n" + programId
+  document.getElementById("connection-message").innerText = programId
 })
 
 await listen('showRooms', (event) => {
@@ -197,6 +197,9 @@ await listen('status', (event) => {
 
 
     listItem.className = "list-group-item";
+    listItem.classList.add("bg-secondary");
+    listItem.style = "--bs-bg-opacity: .2;"
+
     if (status[1] === 'True') {
       const div = document.createElement("div");
       div.classList.add("form-check")
@@ -243,7 +246,7 @@ await listen('joined', (event) => {
     }
     createPlayersInRoomWidget(div, room_name)
   }
-  
+
   console.log("joined:", joined)
 })
 
@@ -272,7 +275,7 @@ function createPlayersInRoomWidget(parentElement, roomName) {
   // Create label element
   const label = document.createElement("label");
   label.className = "form-label";
-  label.textContent = "Players in the room";
+  label.innerHTML = `Players in the <strong>${roomName}</strong> room`;
 
   // Create div elements
   const divRow1 = document.createElement("div");
@@ -308,7 +311,7 @@ function createPlayersInRoomWidget(parentElement, roomName) {
   input1.id = "new-game";
   input1.value = "option1";
   input1.checked = true
-  input1.onchange = () =>  hostmode(0)
+  input1.onchange = () => hostmode(0)
 
   const label1 = document.createElement("label");
   label1.className = "form-check-label";
@@ -337,6 +340,9 @@ function createPlayersInRoomWidget(parentElement, roomName) {
 
   const divCol3 = document.createElement("div");
   divCol3.className = "col col-auto";
+
+  const divCol4 = document.createElement("div");
+  divCol4.className = "col col-auto";
 
   // Create button elements
   const buttonLeave = document.createElement("button");
@@ -369,8 +375,9 @@ function createPlayersInRoomWidget(parentElement, roomName) {
   divRow2.appendChild(divCol2);
 
   divCol3.appendChild(buttonLeave);
-  divCol3.appendChild(buttonReady);
+  divCol4.appendChild(buttonReady);
   divRow3.appendChild(divCol3);
+  divRow3.appendChild(divCol4);
 
   parentElement.appendChild(label);
   parentElement.appendChild(divRow1);
