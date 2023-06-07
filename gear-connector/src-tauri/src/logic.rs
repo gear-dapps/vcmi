@@ -105,7 +105,7 @@ impl Logic {
         let reply = self.gear_reply_receiver.recv().expect("Can't recv");
 
         match reply {
-            GearReply::SavedGames(games) => {}
+            GearReply::SavedGames(_games) => {}
             _ => unreachable!("Unexpected reply to GetSavedGames command"),
         }
         self.vcmi_reply_sender
@@ -126,18 +126,15 @@ impl Logic {
 
         let reply = self.ipfs_reply_receiver.recv().expect("Recv error");
 
-        if let IpfsReply::Uploaded { name, hash } = reply {
+        if let IpfsReply::Uploaded { name: _, hash } = reply {
             let saver_id = ActorId::default();
-            let tar = ArchiveDescription {
+            let archive = ArchiveDescription {
                 filename: archive_name,
-                name,
                 hash,
             };
 
-            let gear_command = GearCommand::SendAction(Action::Save(GameState {
-                saver_id,
-                archive: tar,
-            }));
+            let gear_command =
+                GearCommand::SendAction(Action::Save(GameState { saver_id, archive }));
             self.gear_command_sender
                 .send(gear_command)
                 .expect("Send error");
@@ -165,7 +162,7 @@ impl Logic {
         match gear_reply {
             GearReply::SavedGames(games) => {
                 let mut archives = Vec::with_capacity(games.len());
-                for (_actor_id, state) in games.into_iter() {
+                for state in games.into_iter() {
                     let hash = state.archive.hash;
                     let ipfs_command = IpfsCommand::DownloadData { hash };
                     self.ipfs_command_sender
@@ -292,20 +289,11 @@ impl Logic {
                         self.connect_to_node(node_address, program_id, account_id, password);
                     }
                     GuiCommand::Cancel => {
-                        // main_window.set_fullscreen(true).unwrap();
                         self.main_window.hide().unwrap();
                         self.vcmi_reply_sender
                             .send(VcmiReply::CanceledDialog)
                             .expect("Panic in another thread");
                         self.need_stop.store(true, Relaxed);
-                    }
-                    GuiCommand::ExpandLog => {
-                        self.log_window
-                            .set_size(Size::Logical(LogicalSize::new(0.3, 1.0)))
-                            .unwrap();
-
-                        std::thread::sleep(std::time::Duration::from_millis(1));
-                        self.log_window.move_window(Position::TopRight).unwrap();
                     }
                     GuiCommand::NewRoom {
                         room_name,
@@ -366,6 +354,20 @@ impl Logic {
                         if error.is_empty() {
                             tracing::debug!("Connected to lobby");
                             self.main_window.emit("showRooms", "").unwrap();
+
+                            let mon = self.log_window.current_monitor();
+                            let monitor_size = mon.unwrap().unwrap().size().clone();
+                            self.log_window.move_window(Position::TopRight).unwrap();
+                            std::thread::sleep(std::time::Duration::from_millis(10));
+                            self.log_window
+                                .set_size(Size::Physical(PhysicalSize {
+                                    width: 480,
+                                    height: monitor_size.height,
+                                }))
+                                .unwrap();
+                            std::thread::sleep(std::time::Duration::from_millis(1000));
+                            self.log_window.show().unwrap();
+                            self.log_window.move_window(Position::TopRight).unwrap();
                         } else {
                             self.main_window.emit("alert", error).unwrap();
                         }
@@ -415,15 +417,15 @@ impl Logic {
                         args.push(game_mode.to_string());
                         args.push("--uuid".to_string());
                         args.push(connection_uuid);
-                        self.log_window
-                            .set_size(Size::Logical(LogicalSize::new(0.3, 1.0)))
-                            .unwrap();
 
-                        std::thread::sleep(std::time::Duration::from_millis(1));
+                        self.log_window
+                            .set_size(Size::Logical(LogicalSize::new(0.2, 2.0)))
+                            .unwrap();
                         self.log_window.move_window(Position::TopRight).unwrap();
+                        self.log_window.show().unwrap();
+                        std::thread::sleep(std::time::Duration::from_millis(1));
 
                         start_game(args);
-                        self.log_window.show().unwrap();
                     }
                     LobbyReply::Host(_, _) => unreachable!(),
                     LobbyReply::Status(users_count, statuses) => self

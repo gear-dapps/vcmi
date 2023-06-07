@@ -34,7 +34,7 @@ pub enum GearReply {
     ProgramNotFound { program_id: String },
     Event(Event),
     FreeBalance(u128),
-    SavedGames(Vec<(ActorId, GameState)>),
+    SavedGames(Vec<GameState>),
 }
 
 pub struct GearConnection {
@@ -107,10 +107,16 @@ impl GearClient {
         }) = guard.as_ref()
         {
             let program_id = (*program_id).into();
-            let saved_games: Vec<(ActorId, GameState)> = client
+            let actor_id = client.account_id().encode();
+            let actor_id = ActorId::from_slice(&actor_id).unwrap();
+            let saved_games: Vec<GameState> = client
                 .read_state(program_id)
                 .await
                 .expect("Can't read state");
+            let saved_games = saved_games
+                .into_iter()
+                .filter(|state| state.saver_id.eq(&actor_id))
+                .collect();
             self.gear_reply_sender
                 .send(GearReply::SavedGames(saved_games))
                 .expect("Panic in another thread");

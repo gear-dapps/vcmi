@@ -71,7 +71,6 @@ pub enum GuiCommand {
     HostMode {
         mode: u8,
     },
-    ExpandLog,
     Cancel,
 }
 
@@ -97,10 +96,12 @@ fn main() {
         .manage(gui_sender)
         .plugin(tauri_plugin_positioner::init())
         .invoke_handler(tauri::generate_handler![
-            connect, skip, expand_log, new_room, join_room, ready, hostmode, leave
+            connect, skip, new_room, join_room, ready, hostmode, leave
         ])
         .setup(|app| {
+
             let app_handle = app.handle();
+
             let main_window = app_handle.get_window("lobby").unwrap();
             let log_window = app_handle.get_window("log").unwrap();
 
@@ -203,14 +204,6 @@ async fn connect(
 async fn skip(gui_sender: tauri::State<'_, Sender<GuiCommand>>) -> Result<(), String> {
     let cmd = GuiCommand::Cancel;
     gui_sender.send(cmd).unwrap();
-
-    Ok(())
-}
-
-#[tauri::command]
-async fn expand_log(gui_sender: tauri::State<'_, Sender<GuiCommand>>) -> Result<(), String> {
-    let cmd = GuiCommand::ExpandLog;
-    // gui_sender.send(cmd).unwrap();
 
     Ok(())
 }
