@@ -6,7 +6,7 @@ use std::{
     time::Duration,
 };
 
-use crate::program_io::{Action, Event, GameState};
+use crate::program_io::{Action, ArchiveDescription, Event, GameState};
 use crossbeam_channel::{Receiver, RecvTimeoutError, Sender};
 use gclient::{EventListener, GearApi, WSAddress};
 use gmeta::Encode;
@@ -23,6 +23,7 @@ pub enum GearCommand {
         password: String,
     },
     GetFreeBalance,
+    Save(ArchiveDescription),
     SendAction(Action),
     GetSavedGames,
 }
@@ -145,12 +146,12 @@ impl GearClient {
         }
     }
 
-    async fn process_action(&self, action: Action) {
+    async fn save_game(&self, archive: ArchiveDescription) {
         let mut guard = self
             .gear_connection
             .write()
             .expect("Error in another thread");
-        tracing::debug!("Process action {:?}", action);
+        tracing::debug!("Save to Chain: {:?}", archive);
         if let Some(GearConnection {
             client,
             program_id,
@@ -160,17 +161,24 @@ impl GearClient {
             let pid = *program_id;
             let program_id = pid.into();
 
+            let account_id = ActorId::from_slice(&client.account_id().encode()).unwrap();
+
+            let action = Action::Save(GameState {
+                saver_id: account_id,
+                archive,
+            });
             let gas_limit = client
                 .calculate_handle_gas(None, program_id, action.encode(), 0, true)
                 .await
                 .expect("Can't calculate gas for Action::Save")
                 .min_limit;
             tracing::info!("Gas limit {} for Action {:?}", gas_limit, action);
-            let (message_id, _) = client
+
+            let (_message_id, _) = client
                 .send_message(program_id, &action, gas_limit, 0)
                 .await
                 .expect("Error at sending Action::Save");
-            tracing::info!("Send Action to Gear: {:?}", action);
+            tracing::info!("Sent Action to Gear: {:?}", action);
 
             // !TODO. Code that works with EventListener doesn't work:
 
@@ -282,9 +290,10 @@ impl GearClient {
                     }
                 }
             }
-            GearCommand::SendAction(action) => self.process_action(action).await,
+            GearCommand::SendAction(action) => unreachable!("Shouldn't process action"),
             GearCommand::GetFreeBalance => self.get_free_balance().await,
             GearCommand::GetSavedGames => self.get_saved_games().await,
+            GearCommand::Save(archive) => self.save_game(archive).await,
         }
     }
 }

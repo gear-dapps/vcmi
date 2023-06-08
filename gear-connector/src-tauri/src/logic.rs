@@ -99,19 +99,19 @@ impl Logic {
             .expect("Error in another thread");
     }
 
-    fn show_load_game_dialog(&self) {
-        let command = GearCommand::GetSavedGames;
-        self.gear_command_sender.send(command).expect("Can't send");
-        let reply = self.gear_reply_receiver.recv().expect("Can't recv");
+    // fn show_load_game_dialog(&self) {
+    //     let command = GearCommand::GetSavedGames;
+    //     self.gear_command_sender.send(command).expect("Can't send");
+    //     let reply = self.gear_reply_receiver.recv().expect("Can't recv");
 
-        match reply {
-            GearReply::SavedGames(_games) => {}
-            _ => unreachable!("Unexpected reply to GetSavedGames command"),
-        }
-        self.vcmi_reply_sender
-            .send(VcmiReply::LoadGameDialogShowed)
-            .expect("Error in another thread");
-    }
+    //     match reply {
+    //         GearReply::SavedGames(_games) => {}
+    //         _ => unreachable!("Unexpected reply to GetSavedGames command"),
+    //     }
+    //     self.vcmi_reply_sender
+    //         .send(VcmiReply::LoadGameDialogShowed)
+    //         .expect("Error in another thread");
+    // }
 
     fn save(&self, filename: String, compressed_archive: Vec<u8>) {
         let archive_name = format!("{filename}");
@@ -133,8 +133,7 @@ impl Logic {
                 hash,
             };
 
-            let gear_command =
-                GearCommand::SendAction(Action::Save(GameState { saver_id, archive }));
+            let gear_command = GearCommand::Save(archive);
             self.gear_command_sender
                 .send(gear_command)
                 .expect("Send error");
@@ -216,7 +215,9 @@ impl Logic {
                     .gear_command_sender
                     .send(GearCommand::SendAction(Action::Load { hash: name }))
                     .expect("Error in another thread"),
-                VcmiCommand::ShowLoadGameDialog => self.show_load_game_dialog(),
+                VcmiCommand::ShowLoadGameDialog => {
+                    unreachable!("Shouldn't request ShowLoadGameDialog")
+                }
                 VcmiCommand::LoadAll => self.load_all(),
             },
             Err(e) if e == RecvTimeoutError::Timeout => {}
