@@ -344,7 +344,7 @@ await listen('updateGameMode', (event) => {
 
   const loadGameLabel = document.getElementById("load-game-label");
   loadGameLabel.setAttribute('for', "load-game")
-  loadGameLabel.setAttribute("disabled")
+  loadGameLabel.setAttribute("disabled", "")
 })
 
 function setupDropdownMenu(buttonId, menuId) {

@@ -247,13 +247,19 @@ impl GearClient {
                                         program_id,
                                         listener: client.subscribe().await.unwrap(),
                                     };
-                                    let username = gear_connection.client.account_id().clone();
-                                    tracing::debug!("{:x?}", username.encode());
+                                    let account_id = gear_connection.client.account_id().clone();
+                                    let free_balance =
+                                        client.free_balance(client.account_id()).await.unwrap();
+                                    tracing::info!(
+                                        "Available Balance for {:?}: {}",
+                                        account_id,
+                                        free_balance
+                                    );
                                     guard.replace(gear_connection);
 
                                     self.gear_reply_sender
                                         .send(GearReply::Connected {
-                                            username: username.to_string(),
+                                            username: account_id.to_string(),
                                         })
                                         .expect("Panic in another thread");
                                 }

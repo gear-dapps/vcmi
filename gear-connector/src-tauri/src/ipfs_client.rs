@@ -15,9 +15,9 @@ use tauri::async_runtime::RwLock;
 
 #[derive(Debug)]
 pub enum IpfsCommand {
-    UploadTar { filename: String, tar: File },
+    UploadArchive { filename: String, archive: File },
     UploadData { filename: String, data: Vec<u8> },
-    DownloadTar { hash: String },
+    DownloadArchive { hash: String },
     DownloadData { hash: String },
 }
 
@@ -57,57 +57,56 @@ impl IpfsClient {
                 let command = ipfs_command_receiver.recv();
 
                 match command {
-                    Ok(command) => {
-                        tracing::debug!("Received {:?}", command);
-                        match command {
-                            IpfsCommand::UploadTar {
-                                filename,
-                                tar: file,
-                            } => {
-                                let result = ipfs_client
-                                    .read()
-                                    .await
-                                    .add(file)
-                                    .await
-                                    .expect("Can't upload to ipfs");
-                                tracing::info!(
-                                    "File {filename} uploaded to IPFS. Hash: {}, Name: {}",
-                                    result.hash,
-                                    result.name
-                                );
-                                ipfs_reply_sender
-                                    .send(IpfsReply::Uploaded {
-                                        name: result.name,
-                                        hash: result.hash,
-                                    })
+                    Ok(command) => match command {
+                        IpfsCommand::UploadArchive {
+                            filename,
+                            archive: file,
+                        } => {
+                            tracing::debug!("Received Upload Command, filename {}", filename);
+                            let result = ipfs_client
+                                .read()
+                                .await
+                                .add(file)
+                                .await
+                                .expect("Can't upload to ipfs");
+                            tracing::info!(
+                                "File {filename} uploaded to IPFS. Hash: {}, Name: {}",
+                                result.hash,
+                                result.name
+                            );
+                            ipfs_reply_sender
+                                .send(IpfsReply::Uploaded {
+                                    name: result.name,
+                                    hash: result.hash,
+                                })
+                                .unwrap_or_else(|e| {
+                                    need_stop_clone.store(true, Relaxed);
+                                    panic!("{e}");
+                                });
+                        }
+                        IpfsCommand::DownloadArchive { hash } => {
+                            tracing::debug!("Received Download command, hash: {:?}", hash);
+                            match ipfs_client
+                                .read()
+                                .await
+                                .tar_cat(&hash)
+                                .map_ok(|chunk| chunk.to_vec())
+                                .try_concat()
+                                .await
+                            {
+                                Ok(data) => ipfs_reply_sender
+                                    .send(IpfsReply::Downloaded { data })
                                     .unwrap_or_else(|e| {
                                         need_stop_clone.store(true, Relaxed);
                                         panic!("{e}");
-                                        }
-                                    );
+                                    }),
+                                Err(error) => panic!("Game State Is Not Found in ipfs: {}", error),
                             }
-                            IpfsCommand::DownloadTar { hash } => {
-                                match ipfs_client
-                                    .read()
-                                    .await
-                                    .tar_cat(&hash)
-                                    .map_ok(|chunk| chunk.to_vec())
-                                    .try_concat()
-                                    .await
-                                {
-                                    Ok(data) => ipfs_reply_sender
-                                        .send(IpfsReply::Downloaded { data })
-                                        .unwrap_or_else(|e| {
-                                                need_stop_clone.store(true, Relaxed);
-                                                panic!("{e}");
-                                            }
-                                        ),
-                                    Err(error) => panic!("Game State Is Not Found in ipfs: {}", error),
-                                }
-                            }
-                            IpfsCommand::UploadData { filename, data } => {
-                                let data = std::io::Cursor::new(data);
-                                let result = ipfs_client
+                        }
+                        IpfsCommand::UploadData { filename, data } => {
+                            let data = std::io::Cursor::new(data);
+                            let result =
+                                ipfs_client
                                     .read()
                                     .await
                                     .add(data)
@@ -115,46 +114,42 @@ impl IpfsClient {
                                     .unwrap_or_else(|e| {
                                         need_stop_clone.store(true, Relaxed);
                                         panic!("{e}");
-                                        }
-                                    );
-                                tracing::info!(
-                                    "File {filename} uploaded to IPFS. Hash: {}, Name: {}, Size: {}",
-                                    result.hash,
-                                    result.name
-                                    ,result.size
-                                );
-                                ipfs_reply_sender
-                                    .send(IpfsReply::Uploaded {
-                                        name: result.name,
-                                        hash: result.hash,
-                                    })
+                                    });
+                            tracing::info!(
+                                "File {filename} uploaded to IPFS. Hash: {}, Name: {}, Size: {}",
+                                result.hash,
+                                result.name,
+                                result.size
+                            );
+                            ipfs_reply_sender
+                                .send(IpfsReply::Uploaded {
+                                    name: result.name,
+                                    hash: result.hash,
+                                })
+                                .unwrap_or_else(|e| {
+                                    need_stop_clone.store(true, Relaxed);
+                                    panic!("{e}");
+                                });
+                        }
+                        IpfsCommand::DownloadData { hash } => {
+                            match ipfs_client
+                                .read()
+                                .await
+                                .cat(&hash)
+                                .map_ok(|chunk| chunk.to_vec())
+                                .try_concat()
+                                .await
+                            {
+                                Ok(data) => ipfs_reply_sender
+                                    .send(IpfsReply::Downloaded { data })
                                     .unwrap_or_else(|e| {
                                         need_stop_clone.store(true, Relaxed);
                                         panic!("{e}");
-                                        }
-                                    );
-                            },
-                            IpfsCommand::DownloadData { hash } => {
-                                match ipfs_client
-                                    .read()
-                                    .await
-                                    .cat(&hash)
-                                    .map_ok(|chunk| chunk.to_vec())
-                                    .try_concat()
-                                    .await
-                                {
-                                    Ok(data) => ipfs_reply_sender
-                                        .send(IpfsReply::Downloaded { data })
-                                        .unwrap_or_else(|e| {
-                                            need_stop_clone.store(true, Relaxed);
-                                            panic!("{e}");
-                                            }
-                                        ),
-                                    Err(error) => panic!("Game State Is Not Found in ipfs: {}", error),
-                                }
-                            },
+                                    }),
+                                Err(error) => panic!("Game State Is Not Found in ipfs: {}", error),
+                            }
                         }
-                    }
+                    },
                     Err(error) => {
                         tracing::error!("Error in another thread: {}", error);
                         need_stop_clone.store(true, Relaxed);
