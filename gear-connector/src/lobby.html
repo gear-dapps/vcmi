@@ -66,10 +66,10 @@
             </div>
         </div>
 
-        <div data-tauri-drag-region class="row py-1">
+        <!-- <div data-tauri-drag-region class="row py-1">
             <div data-tauri-drag-region class="col mx-1">
                 <div data-tauri-drag-region class="input-group">
-                    <span class="input-group-text">Mnemonic phrase</span>
+                    <span class="input-group-text">Nickname</span>
                     <input type="text" class="form-control" id="account-id" aria-label="Address"
                         aria-describedby="basic-addon3 basic-addon4">
                 </div>
@@ -81,8 +81,7 @@
                         aria-describedby="button-addon2">
                 </div>
             </div>
-        </div>
-
+        </div> -->
 
         <div data-tauri-drag-region class="row pt-1 text-start">
             <div data-tauri-drag-region class="collapse multi-collapse" id="collapseRoom">
@@ -133,12 +132,12 @@
         </div>
         <div data-tauri-drag-region class="row mt-1 justify-content-center text-center">
             <div data-tauri-drag-region class="gap-2 mx-2">
-                <button id="connect-button" type="button" class="btn btn-success"><text>Connect</text>
+                <button id="connect-button" type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#passwordModal"><text>Connect</text>
                 </button>
             </div>
         </div>
     </div>
-    <!-- Modal -->
+    <!-- Modal Room -->
     <div class="modal fade" id="roomModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -182,6 +181,30 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-success" id="new-room-button">Ok</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Modal Password -->
+    <div class="modal fade" id="passwordModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="exampleModalLabel">Password</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="input-group mb-3">
+                            <input class="form-control" type="text" id="user-password"
+                                aria-label=".form-control-lg example">
+                            <span class="input-group-text">Password</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-success" id="password-ok">Ok</button>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 </div>
             </div>

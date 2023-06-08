@@ -12,6 +12,14 @@
   },
   "tauri": {
     "allowlist": {
+      "http": {
+        "all": true,
+        "request": true,
+        "scope": [
+          "http://**",
+          "https://vcmi.gear-tech.io/**"
+        ]
+      },
       "all": false,
       "shell": {
         "all": false,
@@ -49,8 +57,8 @@
         "title": "gear-online",
         "label": "lobby",
         "url": "lobby.html",
-        "width": 1280,
-        "height": 800
+        "width": 1024,
+        "height": 768
       },
       {
         "transparent": true,

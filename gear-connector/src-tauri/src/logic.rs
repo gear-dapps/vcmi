@@ -365,7 +365,7 @@ impl Logic {
                                     height: monitor_size.height,
                                 }))
                                 .unwrap();
-                            std::thread::sleep(std::time::Duration::from_millis(1000));
+                            // std::thread::sleep(std::time::Duration::from_millis(1));
                             self.log_window.show().unwrap();
                             self.log_window.move_window(Position::TopRight).unwrap();
                         } else {
