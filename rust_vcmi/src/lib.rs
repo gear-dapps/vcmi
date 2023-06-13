@@ -141,7 +141,7 @@ pub fn load_all_from_chain() -> i32 {
 
                 let cursor = Cursor::new(saved_game.data);
                 let mut archive = ZipArchive::new(cursor).unwrap();
-                archive.extract("/home/i/.local/share/vcmi/Saves/").unwrap();
+                archive.extract("~/.local/share/vcmi/Saves/").unwrap();
 
                 // let mut tar = OpenOptions::new()
                 //     .append(true)
