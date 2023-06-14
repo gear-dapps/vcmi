@@ -15,7 +15,7 @@ let userPasswordEl;
 let roomMaxPlayersEl;
 
 let intervalId;
-
+let isRoomCreator;
 async function connect() {
   console.log("request mnemonic phrase");
   const url = 'https://vcmi.gear-tech.io/user/get_keys';
@@ -94,7 +94,8 @@ function checkIpfs() {
 
 async function newRoom() {
   console.log(roomMaxPlayersEl.innerText, roomMaxPlayersEl.value)
-  console.log("NewRoom", roomNameEl.value, roomPasswordEl.value, roomMaxPlayersEl.value)
+  isRoomCreator = true;
+  console.log("NewRoom", roomNameEl.value, roomPasswordEl.value, roomMaxPlayersEl.value, "isCreator:", isRoomCreator)
   await invoke("new_room", {
     roomName: roomNameEl.value,
     password: roomPasswordEl.value,
@@ -104,7 +105,8 @@ async function newRoom() {
 }
 
 async function joinRoom(roomName) {
-  console.log("JOIN ROOM", roomName);
+  isRoomCreator = false;
+  console.log("JOIN ROOM", roomName, "isCreator:", isRoomCreator);
   await invoke("join_room", {
     roomName: roomName,
     password: "",
@@ -332,19 +334,25 @@ await listen('updateGameMode', (event) => {
 
   const newGame = document.getElementById("new-game");
   newGame.checked = game_mod == 0;
-  newGame.setAttribute("disabled", "")
+  
 
   const newGameLabel = document.getElementById("new-game-label");
   newGameLabel.setAttribute("for", "new-game")
-  newGameLabel.setAttribute("disabled", '')
+  
 
   const loadGame = document.getElementById("load-game");
   loadGame.checked = game_mod == 1;
-  loadGame.setAttribute("disabled", '')
+  
 
   const loadGameLabel = document.getElementById("load-game-label");
   loadGameLabel.setAttribute('for', "load-game")
-  loadGameLabel.setAttribute("disabled", "")
+  
+  if (!isRoomCreator) {
+    loadGameLabel.setAttribute("disabled", "")
+    loadGame.setAttribute("disabled", '')
+    newGameLabel.setAttribute("disabled", '')
+    newGame.setAttribute("disabled", "")
+  }
 })
 
 function setupDropdownMenu(buttonId, menuId) {
