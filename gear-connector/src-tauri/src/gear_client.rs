@@ -114,10 +114,11 @@ impl GearClient {
                 .read_state(program_id)
                 .await
                 .expect("Can't read state");
-            let saved_games = saved_games
+            let saved_games: Vec<GameState> = saved_games
                 .into_iter()
                 .filter(|state| state.saver_id.eq(&actor_id))
                 .collect();
+            tracing::debug!("For ActorId: {:?} len: {}, saved_games: {:?}", actor_id, saved_games.len(), saved_games);
             self.gear_reply_sender
                 .send(GearReply::SavedGames(saved_games))
                 .expect("Panic in another thread");

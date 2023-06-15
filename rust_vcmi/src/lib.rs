@@ -122,7 +122,7 @@ pub fn save_state_onchain(vcgm_path: String, vsgm_path: String) -> i32 {
 pub fn load_all_from_chain() -> i32 {
     let connection = try_init_connection!(connection_init);
 
-    println!("Load all saved gamges from gear chain");
+    println!("Load all saved games from chain");
 
     connection
         .command_sender
