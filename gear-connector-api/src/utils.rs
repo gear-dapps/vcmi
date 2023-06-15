@@ -21,8 +21,12 @@ pub fn wrap_to_command_read_reply_write(
     stream: TcpStream,
 ) -> (CommandReadStream, ReplyWriteStream) {
     let (read, write) = stream.into_split();
-    let stream = WrappedStream::new(read, LengthDelimitedCodec::new());
-    let sink = WrappedSink::new(write, LengthDelimitedCodec::new());
+    let codec = LengthDelimitedCodec::builder()
+        .length_field_length(8)
+        .length_field_type::<u64>()
+        .new_codec();
+    let stream = WrappedStream::new(read, codec.clone());
+    let sink = WrappedSink::new(write, codec);
     (
         CommandReadStream::new(stream, Json::default()),
         ReplyWriteStream::new(sink, Json::default()),
@@ -33,8 +37,12 @@ pub fn split_to_reply_read_command_write(
     stream: TcpStream,
 ) -> (ReplyReadStream, CommandWriteStream) {
     let (read, write) = stream.into_split();
-    let stream = WrappedStream::new(read, LengthDelimitedCodec::new());
-    let sink = WrappedSink::new(write, LengthDelimitedCodec::new());
+    let codec = LengthDelimitedCodec::builder()
+        .length_field_length(8)
+        .length_field_type::<u64>()
+        .new_codec();
+    let stream = WrappedStream::new(read, codec.clone());
+    let sink = WrappedSink::new(write, codec);
     (
         ReplyReadStream::new(stream, Json::default()),
         CommandWriteStream::new(sink, Json::default()),
