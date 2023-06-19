@@ -1,8 +1,6 @@
 mod io;
 mod utils;
 
-use crate::ffi::SelectionScreen;
-use crate::utils::get_file_as_byte_vec;
 use futures::{SinkExt, StreamExt};
 use gear_connector_api::utils::split_to_reply_read_command_write;
 use gear_connector_api::*;
@@ -39,7 +37,7 @@ struct Connection {
 
 static mut CONNECTION: OnceCell<Connection> = OnceCell::new();
 
-pub fn save_state_onchain(vcgm_path: String, vsgm_path: String) -> i32 {
+pub fn save_files_onchain(vcgm_path: String, vsgm_path: String) -> i32 {
     let connection = try_init_connection!(connection_init);
     println!("Rust save_state_onchain");
 
@@ -103,7 +101,7 @@ pub fn save_state_onchain(vcgm_path: String, vsgm_path: String) -> i32 {
 
     let original_len = original_vcgm_len + original_vsgm_len;
 
-    let vcmi_command = VcmiCommand::Save {
+    let vcmi_command = VcmiCommand::SaveArchive {
         filename: filename.clone(),
         compressed_archive: buf,
     };
@@ -142,25 +140,12 @@ pub fn load_all_from_chain() -> i32 {
                 let cursor = Cursor::new(saved_game.data);
                 let mut archive = ZipArchive::new(cursor).unwrap();
                 archive.extract("~/.local/share/vcmi/Saves/").unwrap();
-
-                // let mut tar = OpenOptions::new()
-                //     .append(true)
-                //     .write(true)
-                //     .create(true)
-                //     .read(true)
-                //     .open(saved_game.filename.as_str())
-                //     .expect("Can't create file");
-                // tar.write_all(&saved_game.data).unwrap();
-                // let mut zip = zip::ZipArchive::new(tar).unwrap();
-
-                // zip.extract("~./.local/share/vcmi/Saves/").unwrap();
             }
         }
         _ => unreachable!(),
     }
     0
 }
-
 
 fn connection_init() -> Result<Connection, std::io::Error> {
     let (command_sender, command_receiver) = bounded(1);
@@ -210,18 +195,146 @@ fn connection_init() -> Result<Connection, std::io::Error> {
     };
     Ok(connection)
 }
+
+fn save_game_state(day: u32, current_player: String, players: Vec<ffi::RPlayerState>) -> i32 {
+    println!(
+        "Day: {day}, current_player: {current_player}, players: {:?}",
+        players
+    );
+    let connection = try_init_connection!(connection_init);
+
+    println!("Load all saved games from chain");
+
+    connection
+        .command_sender
+        .send(VcmiCommand::LoadAll)
+        .expect("Error in another thread");
+    0
+}
+
 #[cxx::bridge]
 mod ffi {
-    extern "Rust" {
-        fn get_file_as_byte_vec(filename: String) -> Vec<u8>;
+    #[repr(u8)]
+    enum SelectionScreen {
+        Unknown = 0,
+        NewGame,
+        LoadGame,
+        SaveGame,
+        ScenarioInfo,
+        CampaignList,
     }
 
-      extern "Rust" {
-        fn save_state_onchain(vcgm_path: String, vsgm_path: String) -> i32;
+    #[derive(Debug)]
+    #[repr(i8)]
+    enum RPrimarySkill {
+        NONE = -1,
+        ATTACK,
+        DEFENSE,
+        SPELL_POWER,
+        KNOWLEDGE,
+        EXPERIENCE = 4,
+    }
+
+    #[derive(Debug)]
+    #[repr(i32)]
+    enum RSecondarySkill {
+        WRONG = -2,
+        DEFAULT = -1,
+        PATHFINDING = 0,
+        ARCHERY,
+        LOGISTICS,
+        SCOUTING,
+        DIPLOMACY,
+        NAVIGATION,
+        LEADERSHIP,
+        WISDOM,
+        MYSTICISM,
+        LUCK,
+        BALLISTICS,
+        EAGLE_EYE,
+        NECROMANCY,
+        ESTATES,
+        FIRE_MAGIC,
+        AIR_MAGIC,
+        WATER_MAGIC,
+        EARTH_MAGIC,
+        SCHOLAR,
+        TACTICS,
+        ARTILLERY,
+        LEARNING,
+        OFFENCE,
+        ARMORER,
+        INTELLIGENCE,
+        SORCERY,
+        RESISTANCE,
+        FIRST_AID,
+        SKILL_SIZE,
+    }
+
+    #[derive(Debug)]
+    #[repr(i32)]
+    enum RFortLevel {
+        None = 0,
+        Fort = 1,
+        Citadel = 2,
+        Castle = 3,
+    }
+
+    #[derive(Debug)]
+    #[repr(i32)]
+    enum RHallLevel {
+        None = -1,
+        Village = 0,
+        Town = 1,
+        City = 2,
+        Capitol = 3,
+    }
+
+    #[derive(Debug)]
+    struct SecondarySkillInfo {
+        skill: RSecondarySkill,
+        value: u8,
+    }
+
+    #[derive(Debug)]
+    struct HeroInstance {
+        name: String,
+        level: u32,
+        mana: i32,
+        sex: u8,
+        experience_points: i64,
+        secondary_skills: Vec<SecondarySkillInfo>,
+    }
+
+    #[derive(Debug)]
+    struct TownInstance {
+        name: String,
+        fort_level: RFortLevel,
+        hall_level: RHallLevel,
+        mage_guild_level: i32,
+        level: i32,
+    }
+
+    #[derive(Debug)]
+    struct RPlayerState {
+        color: String,
+        team_id: u32,
+        is_human: bool,
+        resources: String,
+        heroes: Vec<HeroInstance>,
+        towns: Vec<TownInstance>,
+    }
+
+    extern "Rust" {
+        fn save_files_onchain(vcgm_path: String, vsgm_path: String) -> i32;
     }
 
     extern "Rust" {
         fn load_all_from_chain() -> i32;
+    }
+
+    extern "Rust" {
+        fn save_game_state(day: u32, current_player: String, players: Vec<RPlayerState>) -> i32;
     }
 
     // TODO! Try to understand how to include C++ header file
@@ -232,14 +345,4 @@ mod ffi {
     //     include!("src/headers.h");
     //     type ESelectionScreen;
     // }
-
-    #[repr(u8)]
-    enum SelectionScreen {
-        Unknown = 0,
-        NewGame,
-        LoadGame,
-        SaveGame,
-        ScenarioInfo,
-        CampaignList,
-    }
 }

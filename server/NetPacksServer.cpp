@@ -37,7 +37,7 @@ void ApplyGhNetPackVisitor::visitSaveGame(SaveGame & pack)
 	const std::string vcgmPath = VCMIDirs::get().userDataPath().string() + '/' + stem + ".vcgm1";
 	const std::string vsgmPath = VCMIDirs::get().userDataPath().string() + '/' + stem + ".vsgm1";
 	logGlobal->warn("User Save Full Path: %s %s, %s", stem, vcgmPath, vsgmPath);
-	auto result = save_state_onchain(vcgmPath, vsgmPath);
+	auto result = save_files_onchain(vcgmPath, vsgmPath);
 	logGlobal->warn("result = %d", result);
 }
 

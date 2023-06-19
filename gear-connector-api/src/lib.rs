@@ -10,11 +10,13 @@ pub struct VcmiSavedGame {
     pub data: Vec<u8>,
 }
 
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum VcmiCommand {
     Connect,
     ShowLoadGameDialog,
-    Save {
+    SaveGameState,
+    SaveArchive {
         filename: String,
         compressed_archive: Vec<u8>,
     },

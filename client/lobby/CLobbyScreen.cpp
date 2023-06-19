@@ -80,8 +80,8 @@ CLobbyScreen::CLobbyScreen(ESelectionScreen screenType)
 	{
 		tabOpt = std::make_shared<OptionsTab>();
 		buttonStart = std::make_shared<CButton>(Point(411, 535), "SCNRLOD.DEF", CGI->generaltexth->zelp[103], std::bind(&CLobbyScreen::startScenario, this, false), SDLK_l);
-		load_all_from_chain();
 		initLobby();
+		load_all_from_chain();
 		break;
 	}
 	case ESelectionScreen::campaignList:

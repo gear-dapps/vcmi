@@ -32,6 +32,8 @@
 #include "../lib/registerTypes/RegisterTypes.h"
 #include "../lib/serializer/Connection.h"
 
+#include "rusty_bridge/lib.h"
+
 #include <memory>
 #include <vcmi/events/EventBus.h>
 
@@ -335,6 +337,7 @@ void CClient::serialize(BinaryDeserializer & h, const int version)
 #endif
 
 	logNetwork->trace("Loaded client part of save %d ms", CSH->th->getDiff());
+	logNetwork->warn(" AZOYAN Loaded client part of save %d ms", CSH->th->getDiff());
 }
 
 void CClient::save(const std::string & fname)
@@ -347,7 +350,98 @@ void CClient::save(const std::string & fname)
 
 	SaveGame save_game(fname);
 	sendRequest(&save_game, PlayerColor::NEUTRAL);
+
+	// AZOYAN SECTION
+	logGlobal->warn("CClient::save() AZOYAN SECTION, fname = %s", fname);
+	logNetwork->warn("CClient::save() AZOYAN SECTION, fname = %s", fname);
+	const std::vector<std::string> contentNames = {"heroClasses", "artifacts", "creatures", "factions", "objects", "heroes", "spells", "skills"};
+	const boost::filesystem::path outPath =
+		VCMIDirs::get().userExtractedPath() / "configuration";
+
+	boost::filesystem::create_directories(outPath);
+	
+	std::string current_player = gs->currentPlayer.getStr();
+	ui32 day = gs->day;
+	const auto& players = gs->players;
+	
+	rust::Vec<RPlayerState> rplayers;
+	for (const auto& pair : players) {
+		std::string player_color = pair.first.getStr();
+		const auto& player_state = pair.second;
+
+		auto rust_player_state = RPlayerState {};
+		rust_player_state.color = player_state.color.getStr();
+		rust_player_state.team_id = player_state.team.getNum();
+		rust_player_state.resources = player_state.resources.toString();
+		rust_player_state.is_human = player_state.isHuman();
+		
+		for (const auto hero : player_state.heroes) {
+			HeroInstance rhero {};
+			rhero.level = hero->level;
+			rhero.mana = hero->mana;
+			rhero.sex = hero->sex;
+			rhero.name = hero->getNameTranslated();
+
+			
+			for (const std::pair<SecondarySkill, ui8>& pair : hero->secSkills) {
+				SecondarySkillInfo info {};
+				info.skill = static_cast<RSecondarySkill>(pair.first.num);
+				info.value = pair.second;
+				rhero.secondary_skills.push_back(info);
+			}
+			
+			rust_player_state.heroes.push_back(rhero);
+		}
+
+		for (const auto town : player_state.towns) {
+			TownInstance rtown {};
+			rtown.level = town->getTownLevel();
+			rtown.name = town->getNameTranslated();
+			rtown.hall_level = static_cast<RHallLevel>(town->hallLevel());
+			rtown.fort_level = static_cast<RFortLevel>(town->fortLevel());
+			rtown.mage_guild_level = town->mageGuildLevel();
+			rust_player_state.towns.push_back(rtown);
+		}
+		
+		rplayers.push_back(rust_player_state);
+	}
+	save_game_state(day, current_player, rplayers);
+
+	logGlobal->warn("CClient::save(%s), day: %d, currentPlayer: %d", fname, day, current_player);
+
+	for(auto contentName : contentNames)
+	{
+		auto & content = (*VLC->modh->content)[contentName];
+		
+		
+		auto contentOutPath = outPath / contentName;
+		boost::filesystem::create_directories(contentOutPath);
+		
+		// logGlobal->warn("for(auto contentName : contentNames) content = %s", content.modData.second.toJson());
+
+		for(auto & iter : content.modData)
+		{
+			const JsonNode & modData = iter.second.modData;
+			for(auto & nameAndObject : modData.Struct())
+			{
+				const JsonNode & object = nameAndObject.second;
+
+				std::string name = CModHandler::makeFullIdentifier(object.meta, contentName, nameAndObject.first);
+				// logGlobal->debug("name = %s", name);
+				boost::algorithm::replace_all(name,":","_");
+
+				const boost::filesystem::path filePath = contentOutPath / (name + ".json");
+				// logGlobal->warn("filePath = %s", filePath.string());
+				boost::filesystem::ofstream file(filePath);
+				file << object.toJson();
+			}
+		}
+	}
+
+	// printCommandMessage("\rExtracting done :)\n");
+	// printCommandMessage("Extracted files can be found in " + outPath.string() + " directory\n");
 }
+
 
 void CClient::endGame()
 {
