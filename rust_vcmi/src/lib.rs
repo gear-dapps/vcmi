@@ -12,10 +12,9 @@ use std::{
     path::Path,
 };
 
-use tokio::net::TcpStream as TokioTcpStream;
-// use tokio::sync::broadcast::{self, Receiver, Sender};
 use crossbeam_channel::{bounded, Receiver, Sender};
 use std::io::{Read, Write};
+use tokio::net::TcpStream as TokioTcpStream;
 use tokio::task::JoinHandle;
 
 use std::sync::atomic::AtomicBool;
@@ -147,6 +146,25 @@ pub fn load_all_from_chain() -> i32 {
     0
 }
 
+fn save_game_state(day: u32, current_player: String, players: Vec<ffi::RPlayerState>) -> i32 {
+    let player_states: Vec<PlayerState> = players.into_iter().map(|state| state.into()).collect();
+    println!(
+        "Day: {day}, current_player: {current_player}, players: {:?}",
+        player_states
+    );
+    let connection = try_init_connection!(connection_init);
+
+    connection
+        .command_sender
+        .send(VcmiCommand::SaveGameState {
+            day,
+            current_player,
+            player_states,
+        })
+        .expect("Error in another thread");
+    0
+}
+
 fn connection_init() -> Result<Connection, std::io::Error> {
     let (command_sender, command_receiver) = bounded(1);
     let (reply_sender, reply_receiver) = bounded(1);
@@ -194,22 +212,6 @@ fn connection_init() -> Result<Connection, std::io::Error> {
         write_t,
     };
     Ok(connection)
-}
-
-fn save_game_state(day: u32, current_player: String, players: Vec<ffi::RPlayerState>) -> i32 {
-    println!(
-        "Day: {day}, current_player: {current_player}, players: {:?}",
-        players
-    );
-    let connection = try_init_connection!(connection_init);
-
-    println!("Load all saved games from chain");
-
-    connection
-        .command_sender
-        .send(VcmiCommand::LoadAll)
-        .expect("Error in another thread");
-    0
 }
 
 #[cxx::bridge]
@@ -296,6 +298,13 @@ mod ffi {
         value: u8,
     }
 
+    #[derive(Debug, Clone)]
+    pub struct RStack {
+        name: String,
+        level: i32,
+        count: u32,
+    }
+
     #[derive(Debug)]
     struct HeroInstance {
         name: String,
@@ -304,6 +313,7 @@ mod ffi {
         sex: u8,
         experience_points: i64,
         secondary_skills: Vec<SecondarySkillInfo>,
+        stacks: [RStack; 7],
     }
 
     #[derive(Debug)]
@@ -323,6 +333,7 @@ mod ffi {
         resources: String,
         heroes: Vec<HeroInstance>,
         towns: Vec<TownInstance>,
+        days_without_castle: i8,
     }
 
     extern "Rust" {
@@ -345,4 +356,163 @@ mod ffi {
     //     include!("src/headers.h");
     //     type ESelectionScreen;
     // }
+}
+
+impl From<ffi::RPlayerState> for PlayerState {
+    fn from(value: ffi::RPlayerState) -> Self {
+        let heroes = value.heroes.into_iter().map(|hero| hero.into()).collect();
+        let towns = value.towns.into_iter().map(|hero| hero.into()).collect();
+
+        let v: Vec<i64> = serde_json::from_str(&value.resources).expect("Can't parse resources");
+        let mut resources: Vec<Resource> = Vec::with_capacity(v.len());
+        resources.push(Resource::Wood(v[0]));
+        resources.push(Resource::Mercury(v[1]));
+        resources.push(Resource::Ore(v[2]));
+        resources.push(Resource::Sulfur(v[3]));
+        resources.push(Resource::Crystal(v[4]));
+        resources.push(Resource::Gems(v[5]));
+        resources.push(Resource::Gold(v[6]));
+        resources.push(Resource::Mithril(v[7]));
+
+        let days_without_castle = if value.days_without_castle >= 0 {
+            Some(value.days_without_castle as u8)
+        } else {
+            None
+        };
+
+        Self {
+            color: value.color,
+            team_id: value.team_id,
+            is_human: value.is_human,
+            resources,
+            heroes,
+            towns,
+            days_without_castle,
+        }
+    }
+}
+
+impl From<ffi::HeroInstance> for Hero {
+    fn from(value: ffi::HeroInstance) -> Self {
+        let secondary_skills = value
+            .secondary_skills
+            .into_iter()
+            .map(|skill| skill.into())
+            .collect();
+        let mut stacks: [Option<Stack>; 7] = Default::default();
+        for (i, stack) in value.stacks.iter().enumerate() {
+            stacks[i] = if stack.count == 0 {
+                None
+            }else {
+                Some(stack.into())
+            };
+        }
+        Self {
+            name: value.name,
+            level: value.level,
+            mana: value.mana,
+            sex: value.sex,
+            experience_points: value.experience_points,
+            secondary_skills,
+            stacks,
+        }
+    }
+}
+
+impl From<ffi::SecondarySkillInfo> for SecondarySkillInfo {
+    fn from(value: ffi::SecondarySkillInfo) -> Self {
+        Self {
+            value: value.value,
+            skill: value.skill.into(),
+        }
+    }
+}
+
+impl From<&ffi::RStack> for Stack {
+    fn from(value: &ffi::RStack) -> Self {
+        Self {
+            name: value.name.clone(),
+            level: value.level,
+            count: value.count,
+        }
+    }
+}
+
+impl From<ffi::RSecondarySkill> for SecondarySkill {
+    fn from(value: ffi::RSecondarySkill) -> Self {
+        match value {
+            ffi::RSecondarySkill::WRONG => Self::Wrong,
+            ffi::RSecondarySkill::DEFAULT => Self::Default,
+            ffi::RSecondarySkill::PATHFINDING => Self::Pathfinding,
+            ffi::RSecondarySkill::ARCHERY => Self::Archery,
+            ffi::RSecondarySkill::LOGISTICS => Self::Logistics,
+            ffi::RSecondarySkill::SCOUTING => Self::Scouting,
+            ffi::RSecondarySkill::DIPLOMACY => Self::Diplomacy,
+            ffi::RSecondarySkill::NAVIGATION => Self::Navigation,
+            ffi::RSecondarySkill::LEADERSHIP => Self::Leadership,
+            ffi::RSecondarySkill::WISDOM => Self::Wisdom,
+            ffi::RSecondarySkill::MYSTICISM => Self::Mysticism,
+            ffi::RSecondarySkill::LUCK => Self::Luck,
+            ffi::RSecondarySkill::BALLISTICS => Self::Ballistics,
+            ffi::RSecondarySkill::EAGLE_EYE => Self::EagleEye,
+            ffi::RSecondarySkill::NECROMANCY => Self::Necromancy,
+            ffi::RSecondarySkill::ESTATES => Self::Estates,
+            ffi::RSecondarySkill::FIRE_MAGIC => Self::FireMagic,
+            ffi::RSecondarySkill::AIR_MAGIC => Self::AirMagic,
+            ffi::RSecondarySkill::WATER_MAGIC => Self::WaterMagic,
+            ffi::RSecondarySkill::EARTH_MAGIC => Self::EarthMagic,
+            ffi::RSecondarySkill::SCHOLAR => Self::Scholar,
+            ffi::RSecondarySkill::TACTICS => Self::Tactics,
+            ffi::RSecondarySkill::ARTILLERY => Self::Artillery,
+            ffi::RSecondarySkill::LEARNING => Self::Learning,
+            ffi::RSecondarySkill::OFFENCE => Self::Offence,
+            ffi::RSecondarySkill::ARMORER => Self::Armorer,
+            ffi::RSecondarySkill::INTELLIGENCE => Self::Intelligence,
+            ffi::RSecondarySkill::SORCERY => Self::Sorcery,
+            ffi::RSecondarySkill::RESISTANCE => Self::Resistance,
+            ffi::RSecondarySkill::FIRST_AID => Self::FirstAid,
+            ffi::RSecondarySkill::SKILL_SIZE => Self::SkillSize,
+            ffi::RSecondarySkill {
+                repr: i32::MIN..=-3_i32,
+            }
+            | ffi::RSecondarySkill {
+                repr: 29_i32..=i32::MAX,
+            } => Self::SkillSize,
+        }
+    }
+}
+
+impl From<ffi::TownInstance> for Town {
+    fn from(value: ffi::TownInstance) -> Self {
+        Self {
+            name: value.name,
+            fort_level: value.fort_level.into(),
+            hall_level: value.hall_level.into(),
+            mage_guild_level: value.mage_guild_level,
+            level: value.level,
+        }
+    }
+}
+
+impl From<ffi::RFortLevel> for FortLevel {
+    fn from(value: ffi::RFortLevel) -> Self {
+        match value {
+            ffi::RFortLevel::Fort => Self::Fort,
+            ffi::RFortLevel::Citadel => Self::Citadel,
+            ffi::RFortLevel::Castle => Self::Castle,
+            _ => Self::None,
+        }
+    }
+}
+
+impl From<ffi::RHallLevel> for HallLevel {
+    fn from(value: ffi::RHallLevel) -> Self {
+        match value {
+            ffi::RHallLevel::Village => Self::Village,
+            ffi::RHallLevel::Town => Self::Town,
+            ffi::RHallLevel::City => Self::City,
+            ffi::RHallLevel::Capitol => Self::Capitol,
+            _ => Self::None,
+        }
+    }
 }

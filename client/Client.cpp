@@ -374,14 +374,29 @@ void CClient::save(const std::string & fname)
 		rust_player_state.team_id = player_state.team.getNum();
 		rust_player_state.resources = player_state.resources.toString();
 		rust_player_state.is_human = player_state.isHuman();
-		
+		if (player_state.daysWithoutCastle) {
+			rust_player_state.days_without_castle = *player_state.daysWithoutCastle;
+		} else {
+			rust_player_state.days_without_castle = -1;
+		}
 		for (const auto hero : player_state.heroes) {
 			HeroInstance rhero {};
 			rhero.level = hero->level;
 			rhero.mana = hero->mana;
 			rhero.sex = hero->sex;
 			rhero.name = hero->getNameTranslated();
-
+			
+			for (const auto& pair: hero->stacks) {
+				auto slot_id = pair.first.getNum();
+				auto stack_instance = pair.second;
+				if (stack_instance != nullptr) {
+					RStack rstack = {};
+					rstack.name = stack_instance->getName();
+					rstack.level = stack_instance->getLevel();
+					rstack.count = stack_instance->getCount();
+					rhero.stacks[slot_id] = rstack;
+				}
+			}
 			
 			for (const std::pair<SecondarySkill, ui8>& pair : hero->secSkills) {
 				SecondarySkillInfo info {};

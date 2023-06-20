@@ -48,6 +48,7 @@ pub enum GuiCommand {
         username: String,
         node_address: String,
         program_id: String,
+        meta_program_id: String,
         account_id: String,
         password: String,
     },
@@ -181,6 +182,7 @@ async fn connect(
     node_address: String,
     account_id: String,
     program_id: String,
+    meta_program_id: String,
     password: String,
     gui_sender: tauri::State<'_, Sender<GuiCommand>>,
 ) -> Result<(), String> {
@@ -193,6 +195,7 @@ async fn connect(
         node_address,
         account_id,
         program_id,
+        meta_program_id,
         password,
     };
     gui_sender.send(cmd).unwrap();

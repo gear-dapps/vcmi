@@ -485,6 +485,8 @@ version = "0.1.0"
 dependencies = [
  "bytes",
  "futures",
+ "parity-scale-codec",
+ "scale-info",
  "serde",
  "serde_json",
  "tokio",

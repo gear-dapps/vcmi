@@ -1,27 +1,157 @@
 use bytes::{Buf, BytesMut};
+use parity_scale_codec::{Encode, Decode};
+use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 use tokio_util::codec::{Decoder, Encoder};
 
 pub mod utils;
-#[derive(Serialize, Deserialize, Hash, PartialEq, PartialOrd, Eq, Ord, Clone, Debug)]
-pub struct VcmiSavedGame {
-    pub filename: String,
-    pub data: Vec<u8>,
+
+#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, PartialOrd, Eq, Ord, Encode, Decode, TypeInfo)]
+#[repr(u8)]
+pub enum PrimarySkill {
+    None = u8::MAX,
+    Attack = 0,
+    Defense,
+    SpellPower,
+    Knowledge,
+    Experience = 4,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, PartialOrd, Eq, Ord, Encode, Decode, TypeInfo)]
+#[repr(u8)]
+pub enum SecondarySkill {
+    Wrong = u8::MAX - 1,
+    Default = u8::MAX,
+    Pathfinding = 0,
+    Archery,
+    Logistics,
+    Scouting,
+    Diplomacy,
+    Navigation,
+    Leadership,
+    Wisdom,
+    Mysticism,
+    Luck,
+    Ballistics,
+    EagleEye,
+    Necromancy,
+    Estates,
+    FireMagic,
+    AirMagic,
+    WaterMagic,
+    EarthMagic,
+    Scholar,
+    Tactics,
+    Artillery,
+    Learning,
+    Offence,
+    Armorer,
+    Intelligence,
+    Sorcery,
+    Resistance,
+    FirstAid,
+    SkillSize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, PartialOrd, Eq, Ord, Encode, Decode, TypeInfo)]
+#[repr(i32)]
+pub enum FortLevel {
+    None = 0,
+    Fort = 1,
+    Citadel = 2,
+    Castle = 3,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, PartialOrd, Eq, Ord, Encode, Decode, TypeInfo)]
+#[repr(u8)]
+pub enum HallLevel {
+    None = u8::MAX,
+    Village = 0,
+    Town = 1,
+    City = 2,
+    Capitol = 3,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, PartialOrd, Eq, Ord, Encode, Decode, TypeInfo)]
+pub struct SecondarySkillInfo {
+    pub skill: SecondarySkill,
+    pub value: u8,
+}
+
+#[derive(Debug, Default, Clone, Serialize, Deserialize, Hash, PartialEq, PartialOrd, Eq, Ord, Encode, Decode, TypeInfo)]
+pub struct Stack {
+    pub name: String,
+    pub level: i32,
+    pub count: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, PartialOrd, Eq, Ord, Encode, Decode, TypeInfo)]
+pub struct Hero {
+    pub name: String,
+    pub level: u32,
+    pub mana: i32,
+    pub sex: u8,
+    pub experience_points: i64,
+    pub secondary_skills: Vec<SecondarySkillInfo>,
+    pub stacks: [Option<Stack>; 7]
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, PartialOrd, Eq, Ord, Encode, Decode, TypeInfo)]
+pub struct Town {
+    pub name: String,
+    pub fort_level: FortLevel,
+    pub hall_level: HallLevel,
+    pub mage_guild_level: i32,
+    pub level: i32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, PartialOrd, Eq, Ord, Encode, Decode, TypeInfo)]
+pub enum Resource {
+    Wood(i64),
+    Mercury(i64),
+    Ore(i64),
+    Sulfur(i64),
+    Crystal(i64),
+    Gems(i64),
+    Gold(i64),
+    Mithril(i64),
+    WoodAndOre,
+    Invalid,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, PartialOrd, Eq, Ord, Encode, Decode, TypeInfo)]
+pub struct PlayerState {
+    pub color: String,
+    pub team_id: u32,
+    pub is_human: bool,
+    pub resources: Vec<Resource>,
+    pub heroes: Vec<Hero>,
+    pub towns: Vec<Town>,
+    pub days_without_castle: Option<u8>,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum VcmiCommand {
     Connect,
     ShowLoadGameDialog,
-    SaveGameState,
+    SaveGameState {
+        day: u32,
+        current_player: String,
+        player_states: Vec<PlayerState>,
+    },
     SaveArchive {
         filename: String,
         compressed_archive: Vec<u8>,
     },
     Load(String),
     LoadAll,
+}
+
+#[derive(Serialize, Deserialize, Hash, PartialEq, PartialOrd, Eq, Ord, Clone, Debug)]
+pub struct VcmiSavedGame {
+    pub filename: String,
+    pub data: Vec<u8>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -37,13 +167,6 @@ pub enum VcmiReply {
 }
 
 pub struct VcmiCommandCodec;
-
-// #[derive(Debug, Serialize, Deserialize)]
-// pub enum Error {
-//     Connect,
-//     Save,
-//     Load,
-// }
 
 impl Encoder<VcmiCommand> for VcmiCommandCodec {
     type Error = Box<dyn Error>;

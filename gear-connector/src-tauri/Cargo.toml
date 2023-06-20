@@ -41,8 +41,11 @@ gstd = { git = "https://github.com/gear-tech/gear.git", features = ["debug"], re
 scale-info = { version = "2", default-features = false }
 parity-scale-codec = { version = "3", default-features = false }
 gclient = { git = "https://github.com/gear-tech/gear.git", rev = "78dfa07" }
+gsdk = { git = "https://github.com/gear-tech/gear.git", rev = "78dfa07" }
 
 gear-connector-api = { path = "../../gear-connector-api" }
+homm3-archive-io = { git = "https://github.com/gear-dapps/homm3" }
+homm3-gamestate-io = { git = "https://github.com/gear-dapps/homm3" }
 
 [profile.release]
 panic = "abort"

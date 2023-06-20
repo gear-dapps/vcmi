@@ -6,11 +6,15 @@ use std::{
     time::Duration,
 };
 
-use crate::program_io::{Action, ArchiveDescription, Event, GameState};
 use crossbeam_channel::{Receiver, RecvTimeoutError, Sender};
-use gclient::{EventListener, GearApi, WSAddress};
+use gclient::{EventListener, GearApi, Result, WSAddress};
+use gear_connector_api::{PlayerState, SecondarySkill};
 use gmeta::Encode;
 use gstd::ActorId;
+use homm3_archive_io::{Action as ArchiveAction, ArchiveDescription, Event, GameArchive};
+use homm3_gamestate_io::PlayerState as IoPlayerState;
+
+use crate::utils::convert_state;
 
 pub const RECV_TIMEOUT: Duration = std::time::Duration::from_millis(1);
 
@@ -19,12 +23,18 @@ pub enum GearCommand {
     ConnectToNode {
         address: WSAddress,
         program_id: String,
+        meta_program_id: String,
         account_id: String,
         password: String,
     },
     GetFreeBalance,
-    Save(ArchiveDescription),
-    SendAction(Action),
+    SaveArchive(ArchiveDescription),
+    SaveGameState {
+        day: u32,
+        current_player: String,
+        player_states: Vec<PlayerState>,
+    },
+    SendAction(ArchiveAction),
     GetSavedGames,
 }
 
@@ -35,13 +45,14 @@ pub enum GearReply {
     ProgramNotFound { program_id: String },
     Event(Event),
     FreeBalance(u128),
-    SavedGames(Vec<GameState>),
+    SavedGames(Vec<GameArchive>),
 }
 
 pub struct GearConnection {
     client: GearApi,
     listener: EventListener,
     program_id: [u8; 32],
+    meta_program_id: [u8; 32],
 }
 
 pub struct GearClient {
@@ -105,20 +116,26 @@ impl GearClient {
             client,
             program_id,
             listener: _,
+            meta_program_id,
         }) = guard.as_ref()
         {
             let program_id = (*program_id).into();
             let actor_id = client.account_id().encode();
             let actor_id = ActorId::from_slice(&actor_id).unwrap();
-            let saved_games: Vec<GameState> = client
+            let saved_games: Vec<GameArchive> = client
                 .read_state(program_id)
                 .await
                 .expect("Can't read state");
-            let saved_games: Vec<GameState> = saved_games
+            let saved_games: Vec<GameArchive> = saved_games
                 .into_iter()
                 .filter(|state| state.saver_id.eq(&actor_id))
                 .collect();
-            tracing::debug!("For ActorId: {:?} len: {}, saved_games: {:?}", actor_id, saved_games.len(), saved_games);
+            tracing::debug!(
+                "For ActorId: {:?} len: {}, saved_games: {:?}",
+                actor_id,
+                saved_games.len(),
+                saved_games
+            );
             self.gear_reply_sender
                 .send(GearReply::SavedGames(saved_games))
                 .expect("Panic in another thread");
@@ -136,6 +153,7 @@ impl GearClient {
             client,
             program_id: _,
             listener: _,
+            meta_program_id,
         }) = guard.as_ref()
         {
             let free_balance = client.free_balance(client.account_id()).await.unwrap();
@@ -147,7 +165,7 @@ impl GearClient {
         }
     }
 
-    async fn save_game(&self, archive: ArchiveDescription) {
+    async fn save_game_archive(&self, archive: ArchiveDescription) {
         let mut guard = self
             .gear_connection
             .write()
@@ -156,6 +174,7 @@ impl GearClient {
         if let Some(GearConnection {
             client,
             program_id,
+            meta_program_id: _,
             ref mut listener,
         }) = guard.as_mut()
         {
@@ -164,7 +183,7 @@ impl GearClient {
 
             let account_id = ActorId::from_slice(&client.account_id().encode()).unwrap();
 
-            let action = Action::Save(GameState {
+            let action = ArchiveAction::SaveArchive(GameArchive {
                 saver_id: account_id,
                 archive,
             });
@@ -175,11 +194,23 @@ impl GearClient {
                 .min_limit;
             tracing::info!("Gas limit {} for Action {:?}", gas_limit, action);
 
-            let (_message_id, _) = client
-                .send_message(program_id, &action, gas_limit, 0)
-                .await
-                .expect("Error at sending Action::Save");
-            tracing::info!("Sent Action to Gear: {:?}", action);
+            for _ in 0..10 {
+                if let Err(e) = client.send_message(program_id, &action, gas_limit, 0).await {
+                    if let gclient::Error::GearSDK(err) = e {
+                        if let gsdk::Error::Tx(error) = err {
+                            if let gsdk::result::TxError::Retracted(_) = error {
+                                listener.blocks_running().await.expect("Block running ");
+                                continue;
+                            }
+                        }
+                    } else {
+                        panic!("Can't send {:?} error: {}", &action, e);
+                    }
+                } else {
+                    tracing::info!("Sent Action to Gear: {:?}", action);
+                    break;
+                }
+            }
 
             // !TODO. Code that works with EventListener doesn't work:
 
@@ -202,10 +233,62 @@ impl GearClient {
             // let reply = GearReply::Event(decoded_event);
 
             self.gear_reply_sender
-                .send(GearReply::Event(Event::Saved))
+                .send(GearReply::Event(Event::SavedArchive))
                 .unwrap();
         } else {
             tracing::warn!("Can't connect to Gear Blockchain Node")
+        }
+    }
+
+    async fn save_game_state(
+        &self,
+        day: u32,
+        current_player: String,
+        player_states: Vec<PlayerState>,
+    ) {
+        let mut guard = self
+            .gear_connection
+            .write()
+            .expect("Error in another thread");
+        tracing::debug!(
+            "Save to Chain: day: {:?}, curreny_player: {:?}",
+            day,
+            current_player
+        );
+        if let Some(GearConnection {
+            client,
+            program_id: _,
+            meta_program_id,
+            ref mut listener,
+        }) = guard.as_mut()
+        {
+            let pid = *meta_program_id;
+            let program_id = pid.into();
+
+            let player_states: Vec<IoPlayerState> = player_states
+                .into_iter()
+                .map(|state| convert_state(state))
+                .collect();
+            let actor_id = client.account_id().encode();
+            let actor_id = ActorId::from_slice(&actor_id).unwrap();
+            let action = homm3_gamestate_io::Action::SaveGameState {
+                saver_id: actor_id,
+                day,
+                current_player,
+                player_states,
+            };
+            let gas_limit = client
+                .calculate_handle_gas(None, program_id, action.encode(), 0, true)
+                .await
+                .expect("Can't calculate gas for Action::Save")
+                .min_limit;
+            tracing::info!("Gas limit {} for Action {:?}", gas_limit, action);
+
+            let (_message_id, _) = client
+                .send_message(program_id, &action, gas_limit, 0)
+                .await
+                .expect("Error at sending Action::Save");
+            tracing::info!("Sent Action to Gear: {:?}", action);
         }
     }
 
@@ -214,6 +297,7 @@ impl GearClient {
             GearCommand::ConnectToNode {
                 address,
                 program_id,
+                meta_program_id,
                 account_id,
                 password,
             } => {
@@ -236,7 +320,6 @@ impl GearClient {
                         );
                         GearApi::init(address).await
                     } else {
-                        // let suri = format!("{account_id}:{password}");
                         let suri = account_id;
                         tracing::debug!("Init GEAR API as {}, address: {:?}", &suri, address);
                         GearApi::init_with(address, suri).await
@@ -248,13 +331,22 @@ impl GearClient {
                             let mut program_id = [0u8; 32];
                             program_id.copy_from_slice(&pid);
 
-                            match client.read_metahash(program_id.into()).await {
-                                Ok(hash) => {
-                                    tracing::info!("Program hash: {:?}", hash);
+                            let metahash = client.read_metahash(program_id.into()).await;
+                            if let Ok(hash) = metahash {
+                                tracing::info!("Program hash: {:?}", hash);
+
+                                let pid = hex::decode(&meta_program_id[2..])
+                                    .expect("Can't decode Program ID");
+                                let mut meta_program_id = [0u8; 32];
+                                meta_program_id.copy_from_slice(&pid);
+                                if let Ok(_hash) =
+                                    client.read_metahash(meta_program_id.into()).await
+                                {
                                     let gear_connection = GearConnection {
                                         client: client.clone(),
-                                        program_id,
                                         listener: client.subscribe().await.unwrap(),
+                                        program_id,
+                                        meta_program_id,
                                     };
                                     let account_id = gear_connection.client.account_id().clone();
                                     let free_balance =
@@ -271,15 +363,15 @@ impl GearClient {
                                             username: account_id.to_string(),
                                         })
                                         .expect("Panic in another thread");
+                                    return;
                                 }
-                                Err(err) => {
-                                    tracing::error!("Read State Error: {}", err);
-                                    self.gear_reply_sender
-                                        .send(GearReply::ProgramNotFound {
-                                            program_id: hex::encode(&program_id),
-                                        })
-                                        .expect("Error in another thread");
-                                }
+                            } else {
+                                tracing::error!("Read Metahash Error: {}", metahash.err().unwrap());
+                                self.gear_reply_sender
+                                    .send(GearReply::ProgramNotFound {
+                                        program_id: hex::encode(&program_id),
+                                    })
+                                    .expect("Error in another thread");
                             }
                         }
                         Err(e) => {
@@ -294,7 +386,15 @@ impl GearClient {
             GearCommand::SendAction(action) => unreachable!("Shouldn't process action"),
             GearCommand::GetFreeBalance => self.get_free_balance().await,
             GearCommand::GetSavedGames => self.get_saved_games().await,
-            GearCommand::Save(archive) => self.save_game(archive).await,
+            GearCommand::SaveArchive(archive) => self.save_game_archive(archive).await,
+            GearCommand::SaveGameState {
+                day,
+                current_player,
+                player_states,
+            } => {
+                self.save_game_state(day, current_player, player_states)
+                    .await
+            }
         }
     }
 }

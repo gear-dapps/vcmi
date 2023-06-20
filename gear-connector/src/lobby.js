@@ -6,6 +6,7 @@ let lobbyAddressInputEl;
 let usernameInputEl;
 let nodeAddressInputEl;
 let programIdInputEl;
+let programId2InputEl;
 let accountIdInputEl;
 let passwordInputEl;
 
@@ -38,6 +39,7 @@ async function connect() {
         lobbyAddress: lobbyAddressInputEl.value,
         username: usernameInputEl.value,
         programId: programIdInputEl.value,
+        metaProgramId: programId2InputEl.value,
         nodeAddress: nodeAddressInputEl.innerText,
         accountId: response.data.privateKey,
         password: ""
@@ -142,6 +144,7 @@ window.addEventListener("DOMContentLoaded", () => {
   usernameInputEl = document.querySelector("#username")
   nodeAddressInputEl = document.querySelector("#node-address")
   programIdInputEl = document.querySelector("#program-id");
+  programId2InputEl = document.querySelector("#program-id-meta");
   accountIdInputEl = document.querySelector("#account-id")
   passwordInputEl = document.querySelector("#password")
   document.querySelector("#password-ok").addEventListener("click", () => connect());

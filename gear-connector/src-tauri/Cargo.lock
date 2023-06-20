@@ -1928,8 +1928,11 @@ dependencies = [
  "gclient",
  "gear-connector-api",
  "gmeta",
+ "gsdk",
  "gstd",
  "hex",
+ "homm3-archive-io",
+ "homm3-gamestate-io",
  "ipfs-api-backend-hyper",
  "once_cell",
  "parity-scale-codec",
@@ -1957,6 +1960,8 @@ version = "0.1.0"
 dependencies = [
  "bytes",
  "futures",
+ "parity-scale-codec",
+ "scale-info",
  "serde",
  "serde_json",
  "tokio",
@@ -2475,6 +2480,28 @@ dependencies = [
  "digest 0.9.0",
  "generic-array 0.14.7",
  "hmac 0.8.1",
+]
+
+[[package]]
+name = "homm3-archive-io"
+version = "0.1.1"
+source = "git+https://github.com/gear-dapps/homm3#70e303819400869f52f0834e09d650c2151de379"
+dependencies = [
+ "gmeta",
+ "gstd",
+ "parity-scale-codec",
+ "scale-info",
+]
+
+[[package]]
+name = "homm3-gamestate-io"
+version = "0.1.1"
+source = "git+https://github.com/gear-dapps/homm3#70e303819400869f52f0834e09d650c2151de379"
+dependencies = [
+ "gmeta",
+ "gstd",
+ "parity-scale-codec",
+ "scale-info",
 ]
 
 [[package]]
@@ -6490,7 +6517,7 @@ checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
 dependencies = [
  "cfg-if",
  "digest 0.10.6",
- "rand 0.8.5",
+ "rand 0.3.23",
  "static_assertions",
 ]
 

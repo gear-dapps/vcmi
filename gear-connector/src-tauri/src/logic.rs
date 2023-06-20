@@ -4,12 +4,13 @@ use std::{
         atomic::{AtomicBool, Ordering::Relaxed},
         Arc,
     },
+    thread::current,
 };
 
 use crossbeam_channel::{Receiver, RecvTimeoutError, Sender};
 
 use gclient::WSAddress;
-use gear_connector_api::{VcmiCommand, VcmiReply, VcmiSavedGame};
+use gear_connector_api::{PlayerState, VcmiCommand, VcmiReply, VcmiSavedGame};
 use gstd::ActorId;
 use tauri::{LogicalSize, PhysicalSize, Size, Window};
 use tauri_plugin_positioner::{Position, WindowExt};
@@ -18,9 +19,9 @@ use crate::{
     gear_client::{GearCommand, GearReply, RECV_TIMEOUT},
     ipfs_client::{IpfsCommand, IpfsReply},
     lobby::{LobbyCommand, LobbyReply, VCMI_VERSION},
-    program_io::{Action, ArchiveDescription, Event, GameState},
     GuiCommand,
 };
+use homm3_archive_io::{Action, ArchiveDescription, Event, GameArchive};
 
 pub enum Recipient {
     GearClient,
@@ -113,7 +114,7 @@ impl Logic {
     //         .expect("Error in another thread");
     // }
 
-    fn save(&self, filename: String, compressed_archive: Vec<u8>) {
+    fn save_archive(&self, filename: String, compressed_archive: Vec<u8>) {
         let archive_name = format!("{filename}");
 
         tracing::info!("Archive len: {}", compressed_archive.len());
@@ -127,20 +128,19 @@ impl Logic {
         let reply = self.ipfs_reply_receiver.recv().expect("Recv error");
 
         if let IpfsReply::Uploaded { name: _, hash } = reply {
-            let saver_id = ActorId::default();
             let archive = ArchiveDescription {
                 filename: archive_name,
                 hash,
             };
 
-            let gear_command = GearCommand::Save(archive);
+            let gear_command = GearCommand::SaveArchive(archive);
             self.gear_command_sender
                 .send(gear_command)
                 .expect("Send error");
             let gear_reply = self.gear_reply_receiver.recv().expect("Recv error");
 
             if let GearReply::Event(e) = gear_reply {
-                if matches!(e, Event::Saved) {
+                if matches!(e, Event::SavedArchive) {
                     self.vcmi_reply_sender
                         .send(VcmiReply::Saved)
                         .expect("Send error");
@@ -150,6 +150,17 @@ impl Logic {
         }
 
         unreachable!();
+    }
+
+    fn save_game_state(&self, day: u32, current_player: String, player_states: Vec<PlayerState>) {
+        let gear_command = GearCommand::SaveGameState {
+            day,
+            current_player,
+            player_states,
+        };
+        self.gear_command_sender
+            .send(gear_command)
+            .expect("Send error");
     }
 
     fn load_all(&self) {
@@ -204,11 +215,19 @@ impl Logic {
         match self.vcmi_command_receiver.recv_timeout(RECV_TIMEOUT) {
             Ok(vcmi_command) => match vcmi_command {
                 VcmiCommand::Connect => self.connect_to_gear(),
-                VcmiCommand::Save {
+                VcmiCommand::SaveGameState {
+                    day,
+                    current_player,
+                    player_states,
+                } => {
+                    self.save_game_state(day, current_player, player_states);
+                    self.update_balance().await;
+                }
+                VcmiCommand::SaveArchive {
                     filename,
                     compressed_archive,
                 } => {
-                    self.save(filename, compressed_archive);
+                    self.save_archive(filename, compressed_archive);
                     self.update_balance().await;
                 }
                 VcmiCommand::Load(name) => self
@@ -232,6 +251,7 @@ impl Logic {
         &self,
         address: String,
         program_id: String,
+        meta_program_id: String,
         account_id: String,
         password: String,
     ) {
@@ -244,6 +264,7 @@ impl Logic {
             .send(GearCommand::ConnectToNode {
                 address,
                 program_id,
+                meta_program_id,
                 password,
                 account_id,
             })
@@ -283,11 +304,18 @@ impl Logic {
                         username,
                         node_address,
                         program_id,
+                        meta_program_id,
                         password,
                         account_id,
                     } => {
                         self.connect_to_lobby(lobby_address, username);
-                        self.connect_to_node(node_address, program_id, account_id, password);
+                        self.connect_to_node(
+                            node_address,
+                            program_id,
+                            meta_program_id,
+                            account_id,
+                            password,
+                        );
                     }
                     GuiCommand::Cancel => {
                         self.main_window.hide().unwrap();
