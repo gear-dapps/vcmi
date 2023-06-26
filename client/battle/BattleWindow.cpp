@@ -398,7 +398,7 @@ void BattleWindow::bAutofightf()
 	{
 		owner.curInt->isAutoFightOn = true;
 		blockUI(true);
-
+		logGlobal->warn("AZOYAN BattleWindow::bAutofightf()");
 		auto ai = CDynLibHandler::getNewBattleAI(settings["server"]["friendlyAI"].String());
 		ai->initBattleInterface(owner.curInt->env, owner.curInt->cb);
 		ai->battleStart(owner.army1, owner.army2, int3(0,0,0), owner.attackingHeroInstance, owner.defendingHeroInstance, owner.curInt->cb->battleGetMySide());

@@ -49,6 +49,7 @@ pub enum GuiCommand {
         node_address: String,
         program_id: String,
         meta_program_id: String,
+        battle_program_id: String,
         account_id: String,
         password: String,
     },
@@ -100,7 +101,6 @@ fn main() {
             connect, skip, new_room, join_room, ready, hostmode, leave
         ])
         .setup(|app| {
-
             let app_handle = app.handle();
 
             let main_window = app_handle.get_window("lobby").unwrap();
@@ -183,6 +183,7 @@ async fn connect(
     account_id: String,
     program_id: String,
     meta_program_id: String,
+    battle_program_id: String,
     password: String,
     gui_sender: tauri::State<'_, Sender<GuiCommand>>,
 ) -> Result<(), String> {
@@ -196,6 +197,7 @@ async fn connect(
         account_id,
         program_id,
         meta_program_id,
+        battle_program_id,
         password,
     };
     gui_sender.send(cmd).unwrap();
@@ -234,7 +236,7 @@ async fn new_room(
 async fn join_room(
     room_name: String,
     password: String,
-    mods: String,
+    _mods: String,
     gui_sender: tauri::State<'_, Sender<GuiCommand>>,
 ) -> Result<(), String> {
     let mods = "h3-for-vcmi-englisation&1.2;vcmi&1.2;vcmi-extras&3.3.6;vcmi-extras.arrowtowericons&1.1;vcmi-extras.battlefieldactions&0.2;vcmi-extras.bonusicons&0.8.1;vcmi-extras.bonusicons.bonus icons&0.8;vcmi-extras.bonusicons.immunity icons&0.6;vcmi-extras.extendedrmg&1.2;vcmi-extras.extraresolutions&1.0;vcmi-extras.quick-exchange&1.0".to_string();

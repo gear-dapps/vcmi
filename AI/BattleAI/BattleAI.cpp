@@ -780,6 +780,8 @@ void CBattleAI::evaluateCreatureSpellcast(const CStack * stack, PossibleSpellcas
 void CBattleAI::battleStart(const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, bool Side)
 {
 	LOG_TRACE(logAi);
+	logGlobal->warn("AZOYAN CBattleAI::battleStar");
+	
 	side = Side;
 }
 

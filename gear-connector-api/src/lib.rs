@@ -1,5 +1,5 @@
 use bytes::{Buf, BytesMut};
-use parity_scale_codec::{Encode, Decode};
+use parity_scale_codec::{Decode, Encode};
 use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
@@ -7,7 +7,7 @@ use tokio_util::codec::{Decoder, Encoder};
 
 pub mod utils;
 
-#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, PartialOrd, Eq, Ord, Encode, Decode, TypeInfo)]
+#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, PartialOrd, Eq, Ord)]
 #[repr(u8)]
 pub enum PrimarySkill {
     None = u8::MAX,
@@ -18,7 +18,7 @@ pub enum PrimarySkill {
     Experience = 4,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, PartialOrd, Eq, Ord, Encode, Decode, TypeInfo)]
+#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, PartialOrd, Eq, Ord)]
 #[repr(u8)]
 pub enum SecondarySkill {
     Wrong = u8::MAX - 1,
@@ -54,7 +54,7 @@ pub enum SecondarySkill {
     SkillSize,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, PartialOrd, Eq, Ord, Encode, Decode, TypeInfo)]
+#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, PartialOrd, Eq, Ord)]
 #[repr(i32)]
 pub enum FortLevel {
     None = 0,
@@ -63,7 +63,7 @@ pub enum FortLevel {
     Castle = 3,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, PartialOrd, Eq, Ord, Encode, Decode, TypeInfo)]
+#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, PartialOrd, Eq, Ord)]
 #[repr(u8)]
 pub enum HallLevel {
     None = u8::MAX,
@@ -73,20 +73,20 @@ pub enum HallLevel {
     Capitol = 3,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, PartialOrd, Eq, Ord, Encode, Decode, TypeInfo)]
+#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, PartialOrd, Eq, Ord)]
 pub struct SecondarySkillInfo {
     pub skill: SecondarySkill,
     pub value: u8,
 }
 
-#[derive(Debug, Default, Clone, Serialize, Deserialize, Hash, PartialEq, PartialOrd, Eq, Ord, Encode, Decode, TypeInfo)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize, Hash, PartialEq, PartialOrd, Eq, Ord)]
 pub struct Stack {
     pub name: String,
     pub level: i32,
     pub count: u32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, PartialOrd, Eq, Ord, Encode, Decode, TypeInfo)]
+#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, PartialOrd, Eq, Ord)]
 pub struct Hero {
     pub name: String,
     pub level: u32,
@@ -94,10 +94,10 @@ pub struct Hero {
     pub sex: u8,
     pub experience_points: i64,
     pub secondary_skills: Vec<SecondarySkillInfo>,
-    pub stacks: [Option<Stack>; 7]
+    pub stacks: [Option<Stack>; 7],
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, PartialOrd, Eq, Ord, Encode, Decode, TypeInfo)]
+#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, PartialOrd, Eq, Ord)]
 pub struct Town {
     pub name: String,
     pub fort_level: FortLevel,
@@ -106,7 +106,20 @@ pub struct Town {
     pub level: i32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, PartialOrd, Eq, Ord, Encode, Decode, TypeInfo)]
+#[derive(
+    Debug,
+    Clone,
+    Serialize,
+    Deserialize,
+    Hash,
+    PartialEq,
+    PartialOrd,
+    Eq,
+    Ord,
+    Encode,
+    Decode,
+    TypeInfo,
+)]
 pub enum Resource {
     Wood(i64),
     Mercury(i64),
@@ -120,7 +133,26 @@ pub enum Resource {
     Invalid,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, PartialOrd, Eq, Ord, Encode, Decode, TypeInfo)]
+#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, PartialOrd, Eq, Ord)]
+pub enum Terrain {
+    NativeTerrain,
+    AnyTerrain,
+    None,
+    FirstRegularTerrain,
+    Dirt,
+    Sand,
+    Grass,
+    Snow,
+    Swamp,
+    Rough,
+    Subterranean,
+    Lava,
+    Water,
+    Rock,
+    OriginalRegularTerrainCount,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, PartialOrd, Eq, Ord)]
 pub struct PlayerState {
     pub color: String,
     pub team_id: u32,
@@ -144,8 +176,23 @@ pub enum VcmiCommand {
         filename: String,
         compressed_archive: Vec<u8>,
     },
+    SimulateBattle(BattleInfo),
     Load(String),
     LoadAll,
+}
+
+#[derive(Serialize, Deserialize, Hash, PartialEq, PartialOrd, Eq, Ord, Clone, Debug)]
+pub struct BattleInfo {
+    pub stacks: Vec<Stack>,
+    pub sides: [BattleSide; 2],
+    pub round: i32,
+    pub active_stack: i32,
+    pub terrain_type: Terrain,
+}
+#[derive(Serialize, Deserialize, Hash, PartialEq, PartialOrd, Eq, Ord, Clone, Debug)]
+pub struct BattleSide {
+    pub color: String,
+    pub hero: Hero,
 }
 
 #[derive(Serialize, Deserialize, Hash, PartialEq, PartialOrd, Eq, Ord, Clone, Debug)]
@@ -163,6 +210,7 @@ pub enum VcmiReply {
     Saved,
     Loaded { archive_data: Vec<u8> },
     AllLoaded { archives: Vec<VcmiSavedGame> },
+    BattleInfo(BattleInfo),
     LoadGameDialogShowed,
 }
 

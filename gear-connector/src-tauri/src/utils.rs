@@ -1,7 +1,4 @@
-use std::{
-    fmt::{self},
-    sync::atomic::AtomicBool,
-};
+use std::fmt::{self};
 
 use gear_connector_api::SecondarySkill;
 use tauri::Window;
@@ -137,6 +134,15 @@ pub fn convert_secondary_skill_info(
     }
 }
 
+pub fn convert_secondary_skill_info2(
+    info: homm3_gamestate_io::SecondarySkillInfo,
+) -> gear_connector_api::SecondarySkillInfo {
+    gear_connector_api::SecondarySkillInfo {
+        skill: convert_secondary_skill2(info.skill),
+        value: info.value,
+    }
+}
+
 pub fn convert_secondary_skill(
     secondary_skill: SecondarySkill,
 ) -> homm3_gamestate_io::SecondarySkill {
@@ -175,6 +181,44 @@ pub fn convert_secondary_skill(
     }
 }
 
+pub fn convert_secondary_skill2(
+    secondary_skill: homm3_gamestate_io::SecondarySkill,
+) -> SecondarySkill {
+    match secondary_skill {
+        homm3_gamestate_io::SecondarySkill::Wrong => SecondarySkill::Wrong,
+        homm3_gamestate_io::SecondarySkill::Default => SecondarySkill::Default,
+        homm3_gamestate_io::SecondarySkill::Pathfinding => SecondarySkill::Pathfinding,
+        homm3_gamestate_io::SecondarySkill::Archery => SecondarySkill::Archery,
+        homm3_gamestate_io::SecondarySkill::Logistics => SecondarySkill::Logistics,
+        homm3_gamestate_io::SecondarySkill::Scouting => SecondarySkill::Scouting,
+        homm3_gamestate_io::SecondarySkill::Diplomacy => SecondarySkill::Diplomacy,
+        homm3_gamestate_io::SecondarySkill::Navigation => SecondarySkill::Navigation,
+        homm3_gamestate_io::SecondarySkill::Leadership => SecondarySkill::Leadership,
+        homm3_gamestate_io::SecondarySkill::Wisdom => SecondarySkill::Wisdom,
+        homm3_gamestate_io::SecondarySkill::Mysticism => SecondarySkill::Mysticism,
+        homm3_gamestate_io::SecondarySkill::Luck => SecondarySkill::Luck,
+        homm3_gamestate_io::SecondarySkill::Ballistics => SecondarySkill::Ballistics,
+        homm3_gamestate_io::SecondarySkill::EagleEye => SecondarySkill::EagleEye,
+        homm3_gamestate_io::SecondarySkill::Necromancy => SecondarySkill::Necromancy,
+        homm3_gamestate_io::SecondarySkill::Estates => SecondarySkill::Estates,
+        homm3_gamestate_io::SecondarySkill::FireMagic => SecondarySkill::FireMagic,
+        homm3_gamestate_io::SecondarySkill::AirMagic => SecondarySkill::AirMagic,
+        homm3_gamestate_io::SecondarySkill::WaterMagic => SecondarySkill::WaterMagic,
+        homm3_gamestate_io::SecondarySkill::EarthMagic => SecondarySkill::EarthMagic,
+        homm3_gamestate_io::SecondarySkill::Scholar => SecondarySkill::Scholar,
+        homm3_gamestate_io::SecondarySkill::Tactics => SecondarySkill::Tactics,
+        homm3_gamestate_io::SecondarySkill::Artillery => SecondarySkill::Artillery,
+        homm3_gamestate_io::SecondarySkill::Learning => SecondarySkill::Learning,
+        homm3_gamestate_io::SecondarySkill::Offence => SecondarySkill::Offence,
+        homm3_gamestate_io::SecondarySkill::Armorer => SecondarySkill::Armorer,
+        homm3_gamestate_io::SecondarySkill::Intelligence => SecondarySkill::Intelligence,
+        homm3_gamestate_io::SecondarySkill::Sorcery => SecondarySkill::Sorcery,
+        homm3_gamestate_io::SecondarySkill::Resistance => SecondarySkill::Resistance,
+        homm3_gamestate_io::SecondarySkill::FirstAid => SecondarySkill::FirstAid,
+        homm3_gamestate_io::SecondarySkill::SkillSize => SecondarySkill::SkillSize,
+    }
+}
+
 pub fn convert_hero(hero: gear_connector_api::Hero) -> homm3_gamestate_io::Hero {
     let secondary_skills: Vec<homm3_gamestate_io::SecondarySkillInfo> = hero
         .secondary_skills
@@ -186,6 +230,35 @@ pub fn convert_hero(hero: gear_connector_api::Hero) -> homm3_gamestate_io::Hero 
         stacks[i] = convert_stack(stack);
     }
     homm3_gamestate_io::Hero {
+        name: hero.name,
+        level: hero.level,
+        mana: hero.mana,
+        sex: hero.sex,
+        experience_points: hero.experience_points,
+        secondary_skills,
+        stacks,
+    }
+}
+
+pub fn convert_hero2(hero: homm3_gamestate_io::Hero) -> gear_connector_api::Hero {
+    let secondary_skills: Vec<gear_connector_api::SecondarySkillInfo> = hero
+        .secondary_skills
+        .into_iter()
+        .map(|info| convert_secondary_skill_info2(info))
+        .collect();
+    let mut stacks: [Option<gear_connector_api::Stack>; 7] = Default::default();
+    for (i, stack) in hero.stacks.into_iter().enumerate() {
+        stacks[i] = if let Some(s) = stack {
+            Some(gear_connector_api::Stack {
+                name: s.name,
+                level: s.level,
+                count: s.count,
+            })
+        } else {
+            None
+        };
+    }
+    gear_connector_api::Hero {
         name: hero.name,
         level: hero.level,
         mana: hero.mana,
@@ -249,5 +322,113 @@ fn convert_stack(stack: Option<gear_connector_api::Stack>) -> Option<homm3_games
         })
     } else {
         None
+    }
+}
+
+pub fn convert_battle_info(
+    battle_info: gear_connector_api::BattleInfo,
+) -> homm3_battle_io::BattleInfo {
+    let stacks = battle_info
+        .stacks
+        .into_iter()
+        .map(|stack| convert_stack(Some(stack)).unwrap())
+        .collect();
+
+    let side1 = homm3_battle_io::BattleSide {
+        color: battle_info.sides[0].color.clone(),
+        hero: convert_hero(battle_info.sides[0].hero.clone()),
+    };
+
+    let side2 = homm3_battle_io::BattleSide {
+        color: battle_info.sides[1].color.clone(),
+        hero: convert_hero(battle_info.sides[1].hero.clone()),
+    };
+
+    homm3_battle_io::BattleInfo {
+        stacks,
+        sides: [side1, side2],
+        round: battle_info.round,
+        active_stack: battle_info.active_stack,
+        terrain_type: convert_terrain_type(battle_info.terrain_type),
+    }
+}
+
+pub fn convert_battle_info2(
+    battle_info: homm3_battle_io::BattleInfo,
+) -> gear_connector_api::BattleInfo {
+    let stacks = battle_info
+        .stacks
+        .into_iter()
+        .map(|stack| gear_connector_api::Stack {
+            name: stack.name,
+            level: stack.level,
+            count: stack.count,
+        })
+        .collect();
+
+    let side1 = gear_connector_api::BattleSide {
+        color: battle_info.sides[0].color.clone(),
+        hero: convert_hero2(battle_info.sides[0].hero.clone()),
+    };
+
+    let side2 = gear_connector_api::BattleSide {
+        color: battle_info.sides[1].color.clone(),
+        hero: convert_hero2(battle_info.sides[1].hero.clone()),
+    };
+
+    gear_connector_api::BattleInfo {
+        stacks,
+        sides: [side1, side2],
+        round: battle_info.round,
+        active_stack: battle_info.active_stack,
+        terrain_type: convert_terrain_type2(battle_info.terrain_type),
+    }
+}
+
+fn convert_terrain_type(terrain_type: gear_connector_api::Terrain) -> homm3_battle_io::Terrain {
+    match terrain_type {
+        gear_connector_api::Terrain::NativeTerrain => homm3_battle_io::Terrain::NativeTerrain,
+        gear_connector_api::Terrain::AnyTerrain => homm3_battle_io::Terrain::AnyTerrain,
+        gear_connector_api::Terrain::None => homm3_battle_io::Terrain::None,
+        gear_connector_api::Terrain::FirstRegularTerrain => {
+            homm3_battle_io::Terrain::FirstRegularTerrain
+        }
+        gear_connector_api::Terrain::Dirt => homm3_battle_io::Terrain::Dirt,
+        gear_connector_api::Terrain::Sand => homm3_battle_io::Terrain::Sand,
+        gear_connector_api::Terrain::Grass => homm3_battle_io::Terrain::Grass,
+        gear_connector_api::Terrain::Snow => homm3_battle_io::Terrain::Snow,
+        gear_connector_api::Terrain::Swamp => homm3_battle_io::Terrain::Swamp,
+        gear_connector_api::Terrain::Rough => homm3_battle_io::Terrain::Rough,
+        gear_connector_api::Terrain::Subterranean => homm3_battle_io::Terrain::Subterranean,
+        gear_connector_api::Terrain::Lava => homm3_battle_io::Terrain::Lava,
+        gear_connector_api::Terrain::Water => homm3_battle_io::Terrain::Water,
+        gear_connector_api::Terrain::Rock => homm3_battle_io::Terrain::Rock,
+        gear_connector_api::Terrain::OriginalRegularTerrainCount => {
+            homm3_battle_io::Terrain::OriginalRegularTerrainCount
+        }
+    }
+}
+
+fn convert_terrain_type2(terrain_type: homm3_battle_io::Terrain) -> gear_connector_api::Terrain {
+    match terrain_type {
+        homm3_battle_io::Terrain::NativeTerrain => gear_connector_api::Terrain::NativeTerrain,
+        homm3_battle_io::Terrain::AnyTerrain => gear_connector_api::Terrain::AnyTerrain,
+        homm3_battle_io::Terrain::None => gear_connector_api::Terrain::None,
+        homm3_battle_io::Terrain::FirstRegularTerrain => {
+            gear_connector_api::Terrain::FirstRegularTerrain
+        }
+        homm3_battle_io::Terrain::Dirt => gear_connector_api::Terrain::Dirt,
+        homm3_battle_io::Terrain::Sand => gear_connector_api::Terrain::Sand,
+        homm3_battle_io::Terrain::Grass => gear_connector_api::Terrain::Grass,
+        homm3_battle_io::Terrain::Snow => gear_connector_api::Terrain::Snow,
+        homm3_battle_io::Terrain::Swamp => gear_connector_api::Terrain::Swamp,
+        homm3_battle_io::Terrain::Rough => gear_connector_api::Terrain::Rough,
+        homm3_battle_io::Terrain::Subterranean => gear_connector_api::Terrain::Subterranean,
+        homm3_battle_io::Terrain::Lava => gear_connector_api::Terrain::Lava,
+        homm3_battle_io::Terrain::Water => gear_connector_api::Terrain::Water,
+        homm3_battle_io::Terrain::Rock => gear_connector_api::Terrain::Rock,
+        homm3_battle_io::Terrain::OriginalRegularTerrainCount => {
+            gear_connector_api::Terrain::OriginalRegularTerrainCount
+        }
     }
 }

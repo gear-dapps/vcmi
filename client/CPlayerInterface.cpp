@@ -694,7 +694,8 @@ void CPlayerInterface::battleStart(const CCreatureSet *army1, const CCreatureSet
 {
 	EVENT_HANDLER_CALLED_BY_CLIENT;
 	if (settings["adventure"]["quickCombat"].Bool())
-	{
+	{	
+		logGlobal->warn("AZOYAN CPlayerInterface::battleStart");
 		autofightingAI = CDynLibHandler::getNewBattleAI(settings["server"]["friendlyAI"].String());
 		autofightingAI->initBattleInterface(env, cb);
 		autofightingAI->battleStart(army1, army2, int3(0,0,0), hero1, hero2, side);

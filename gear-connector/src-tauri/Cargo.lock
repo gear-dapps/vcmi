@@ -1932,6 +1932,7 @@ dependencies = [
  "gstd",
  "hex",
  "homm3-archive-io",
+ "homm3-battle-io",
  "homm3-gamestate-io",
  "ipfs-api-backend-hyper",
  "once_cell",
@@ -2485,7 +2486,7 @@ dependencies = [
 [[package]]
 name = "homm3-archive-io"
 version = "0.1.1"
-source = "git+https://github.com/gear-dapps/homm3#70e303819400869f52f0834e09d650c2151de379"
+source = "git+https://github.com/gear-dapps/homm3#2260bc4cd9e0a62052782cdebb997a4197be7841"
 dependencies = [
  "gmeta",
  "gstd",
@@ -2494,9 +2495,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "homm3-battle-io"
+version = "0.1.1"
+source = "git+https://github.com/gear-dapps/homm3#2260bc4cd9e0a62052782cdebb997a4197be7841"
+dependencies = [
+ "gmeta",
+ "gstd",
+ "homm3-gamestate-io",
+ "parity-scale-codec",
+ "scale-info",
+]
+
+[[package]]
 name = "homm3-gamestate-io"
 version = "0.1.1"
-source = "git+https://github.com/gear-dapps/homm3#70e303819400869f52f0834e09d650c2151de379"
+source = "git+https://github.com/gear-dapps/homm3#2260bc4cd9e0a62052782cdebb997a4197be7841"
 dependencies = [
  "gmeta",
  "gstd",

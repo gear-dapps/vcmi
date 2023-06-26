@@ -1,27 +1,23 @@
-use std::{
-    process::{Command, Stdio},
-    sync::{
-        atomic::{AtomicBool, Ordering::Relaxed},
-        Arc,
-    },
-    thread::current,
-};
-
-use crossbeam_channel::{Receiver, RecvTimeoutError, Sender};
-
-use gclient::WSAddress;
-use gear_connector_api::{PlayerState, VcmiCommand, VcmiReply, VcmiSavedGame};
-use gstd::ActorId;
-use tauri::{LogicalSize, PhysicalSize, Size, Window};
-use tauri_plugin_positioner::{Position, WindowExt};
-
 use crate::{
     gear_client::{GearCommand, GearReply, RECV_TIMEOUT},
     ipfs_client::{IpfsCommand, IpfsReply},
     lobby::{LobbyCommand, LobbyReply, VCMI_VERSION},
+    utils::convert_battle_info2,
     GuiCommand,
 };
-use homm3_archive_io::{Action, ArchiveDescription, Event, GameArchive};
+use crossbeam_channel::{Receiver, RecvTimeoutError, Sender};
+use gclient::WSAddress;
+use gear_connector_api::{BattleInfo, PlayerState, VcmiCommand, VcmiReply, VcmiSavedGame};
+use homm3_archive_io::{Action, ArchiveDescription, Event};
+use std::{
+    process::Command,
+    sync::{
+        atomic::{AtomicBool, Ordering::Relaxed},
+        Arc,
+    },
+};
+use tauri::{LogicalSize, PhysicalSize, Size, Window};
+use tauri_plugin_positioner::{Position, WindowExt};
 
 pub enum Recipient {
     GearClient,
@@ -114,6 +110,27 @@ impl Logic {
     //         .expect("Error in another thread");
     // }
 
+    fn simulate_battle(&self, battle_info: BattleInfo) {
+        let battle_info = crate::utils::convert_battle_info(battle_info);
+        let gear_command = GearCommand::SimulateBattle(battle_info);
+
+        self.gear_command_sender
+            .send(gear_command)
+            .expect("Send error");
+        let gear_reply = self.gear_reply_receiver.recv().expect("Recv error");
+        tracing::debug!("simulate battle reply: {:?}", gear_reply);
+        match gear_reply {
+            GearReply::Simulated(e) => match e {
+                homm3_battle_io::Event::BattleResult(res) => {
+                    self.vcmi_reply_sender
+                        .send(VcmiReply::BattleInfo(convert_battle_info2(res)))
+                        .expect("Send error");
+                }
+            },
+            _ => {}
+        }
+    }
+
     fn save_archive(&self, filename: String, compressed_archive: Vec<u8>) {
         let archive_name = format!("{filename}");
 
@@ -139,7 +156,7 @@ impl Logic {
                 .expect("Send error");
             let gear_reply = self.gear_reply_receiver.recv().expect("Recv error");
 
-            if let GearReply::Event(e) = gear_reply {
+            if let GearReply::Saved(e) = gear_reply {
                 if matches!(e, Event::SavedArchive) {
                     self.vcmi_reply_sender
                         .send(VcmiReply::Saved)
@@ -238,6 +255,7 @@ impl Logic {
                     unreachable!("Shouldn't request ShowLoadGameDialog")
                 }
                 VcmiCommand::LoadAll => self.load_all(),
+                VcmiCommand::SimulateBattle(battle_info) => self.simulate_battle(battle_info),
             },
             Err(e) if e == RecvTimeoutError::Timeout => {}
             Err(e) => {
@@ -252,6 +270,7 @@ impl Logic {
         address: String,
         program_id: String,
         meta_program_id: String,
+        battle_program_id: String,
         account_id: String,
         password: String,
     ) {
@@ -265,6 +284,7 @@ impl Logic {
                 address,
                 program_id,
                 meta_program_id,
+                battle_program_id,
                 password,
                 account_id,
             })
@@ -305,6 +325,7 @@ impl Logic {
                         node_address,
                         program_id,
                         meta_program_id,
+                        battle_program_id,
                         password,
                         account_id,
                     } => {
@@ -313,6 +334,7 @@ impl Logic {
                             node_address,
                             program_id,
                             meta_program_id,
+                            battle_program_id,
                             account_id,
                             password,
                         );

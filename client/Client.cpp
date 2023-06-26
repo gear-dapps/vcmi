@@ -380,7 +380,7 @@ void CClient::save(const std::string & fname)
 			rust_player_state.days_without_castle = -1;
 		}
 		for (const auto hero : player_state.heroes) {
-			HeroInstance rhero {};
+			RHero rhero {};
 			rhero.level = hero->level;
 			rhero.mana = hero->mana;
 			rhero.sex = hero->sex;
@@ -404,7 +404,6 @@ void CClient::save(const std::string & fname)
 				info.value = pair.second;
 				rhero.secondary_skills.push_back(info);
 			}
-			
 			rust_player_state.heroes.push_back(rhero);
 		}
 
@@ -696,6 +695,7 @@ void CClient::battleStarted(const BattleInfo * info)
 
 	auto callBattleStart = [&](PlayerColor color, ui8 side)
 	{
+		logGlobal->warn("AZOYAN callBattleStart");
 		if(vstd::contains(battleints, color))
 			battleints[color]->battleStart(leftSide.armyObject, rightSide.armyObject, info->tile, leftSide.hero, rightSide.hero, side);
 	};

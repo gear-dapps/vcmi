@@ -57,6 +57,8 @@
 #include <vcmi/events/GenericEvents.h>
 #include <vcmi/events/AdventureEvents.h>
 
+#include "rusty_bridge/lib.h"
+
 #ifndef _MSC_VER
 #include <boost/thread/xtime.hpp>
 #endif
@@ -2257,7 +2259,7 @@ std::list<PlayerColor> CGameHandler::generatePlayerTurnOrder() const
 void CGameHandler::setupBattle(int3 tile, const CArmedInstance *armies[2], const CGHeroInstance *heroes[2], bool creatureBank, const CGTownInstance *town)
 {
 	battleResult.set(nullptr);
-
+	logGlobal->warn("AZOYAN CGameHandler::setupBattle");
 	const auto & t = *getTile(tile);
 	TerrainId terrain = t.terType->getId();
 	if (gs->map->isCoastalTile(tile)) //coastal tile is always ground
@@ -6441,6 +6443,62 @@ void CGameHandler::runBattle()
 {
 	setBattle(gs->curB);
 	assert(gs->curB);
+	// if(settings["adventure"]["quickCombat"].Bool()) {
+		logGlobal->warn("AZOYAN CGameHandler::runBattle()");
+
+		if (gs != nullptr && gs->curB != nullptr) {
+			RBattleInfo rbattle {};
+			rbattle.round = gs->curB->round;
+			rbattle.active_stack = gs->curB->activeStack;
+			rbattle.terrain_type = static_cast<RTerrain>(gs->curB->terrainType.getNum());
+
+			for (auto stack : gs->curB->stacks) {
+				if (stack != nullptr) {
+					RStack rstack {};
+					rstack.name = stack->getName();
+					rstack.level = stack->level();
+					rstack.count = stack->getCount();
+					rbattle.stacks.push_back(rstack);
+				}
+			}
+
+			for (int i = 0; i < gs->curB->sides.size(); ++i) {
+				const auto& side =  gs->curB->sides[i];
+				RBattleSide rside {};
+				rside.color = side.color.getStr();
+				if (side.hero != nullptr) {
+					RHero rhero {};
+					rhero.level = side.hero->level;
+					rhero.mana = side.hero->mana;
+					rhero.sex = side.hero->sex;
+					rhero.name = side.hero->getNameTranslated();
+					
+					rside.hero = rhero;
+				}
+				rbattle.sides[i] = rside;
+			}
+			simulate_battle_onchain(rbattle);
+			int totalCount[2] = {0, 0};
+			for (int i = 0; i < gs->curB->stacks.size(); ++i) {
+				if (gs->curB->stacks[i] != nullptr) {
+					// gs->curB->stacks[i]->name = rbattle.stacks[i].name;
+					// gs->curB->stacks[i]->level = rbattle.stacks[i].level;
+					gs->curB->stacks[i]->health.setCount(rbattle.stacks[i].count);
+					totalCount[i] = rbattle.stacks[i].count;
+				}
+			}
+			int victoriusSide = 0;
+			if (totalCount[1] > totalCount[0]) {
+				victoriusSide = 1;
+			}
+			setBattleResult(BattleResult::EResult::NORMAL, victoriusSide);
+			if (lobby->state != EServerState::SHUTDOWN) {
+				endBattle(gs->curB->tile, gs->curB->battleGetFightingHero(0), gs->curB->battleGetFightingHero(1));
+			}
+			logGlobal->warn("AZOYAN simulate_battle_onchain done");
+			return;
+		}
+	// }
 	//TODO: pre-tactic stuff, call scripts etc.
 
 	//tactic round

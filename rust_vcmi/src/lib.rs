@@ -165,6 +165,40 @@ fn save_game_state(day: u32, current_player: String, players: Vec<ffi::RPlayerSt
     0
 }
 
+fn simulate_battle_onchain(rbattle_info: &mut ffi::RBattleInfo) -> i32 {
+    let connection = try_init_connection!(connection_init);
+    let battle_info = rbattle_info.clone().into();
+    connection
+        .command_sender
+        .send(VcmiCommand::SimulateBattle(battle_info))
+        .expect("Error in another thread");
+    let reply = connection.reply_receiver.recv().expect("Recv error");
+    match reply {
+        VcmiReply::BattleInfo(ref received) => {
+            dbg!(received);
+            let round = received.round;
+            let active_stack = received.active_stack;
+            let terrain_type = received.terrain_type.clone().into();
+            let stacks = received.stacks.iter().map(|stack| stack.into()).collect();
+            let s1 = (&received.sides[0]).into();
+            let s2 = (&received.sides[1]).into();
+            let sides: [ffi::RBattleSide; 2] = [s1, s2];
+
+            rbattle_info.round = round;
+            rbattle_info.active_stack = active_stack;
+            rbattle_info.terrain_type = terrain_type;
+            rbattle_info.stacks = stacks;
+            rbattle_info.sides = sides;
+
+            dbg!(&rbattle_info);
+        }
+        _ => {
+            dbg!(reply);
+        }
+    }
+    0
+}
+
 fn connection_init() -> Result<Connection, std::io::Error> {
     let (command_sender, command_receiver) = bounded(1);
     let (reply_sender, reply_receiver) = bounded(1);
@@ -237,7 +271,7 @@ mod ffi {
         EXPERIENCE = 4,
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     #[repr(i32)]
     enum RSecondarySkill {
         WRONG = -2,
@@ -273,6 +307,26 @@ mod ffi {
         SKILL_SIZE,
     }
 
+    #[derive(Debug, Clone)]
+    #[repr(i32)]
+    enum RTerrain {
+        NATIVE_TERRAIN = -4,
+        ANY_TERRAIN = -3,
+        NONE = -1,
+        FIRST_REGULAR_TERRAIN = 0,
+        DIRT = 0,
+        SAND,
+        GRASS,
+        SNOW,
+        SWAMP,
+        ROUGH,
+        SUBTERRANEAN,
+        LAVA,
+        WATER,
+        ROCK,
+        ORIGINAL_REGULAR_TERRAIN_COUNT = 9,
+    }
+
     #[derive(Debug)]
     #[repr(i32)]
     enum RFortLevel {
@@ -292,21 +346,21 @@ mod ffi {
         Capitol = 3,
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     struct SecondarySkillInfo {
         skill: RSecondarySkill,
         value: u8,
     }
 
-    #[derive(Debug, Clone)]
+    #[derive(Debug, Clone, Default)]
     pub struct RStack {
         name: String,
         level: i32,
         count: u32,
     }
 
-    #[derive(Debug)]
-    struct HeroInstance {
+    #[derive(Debug, Clone)]
+    struct RHero {
         name: String,
         level: u32,
         mana: i32,
@@ -331,9 +385,24 @@ mod ffi {
         team_id: u32,
         is_human: bool,
         resources: String,
-        heroes: Vec<HeroInstance>,
+        heroes: Vec<RHero>,
         towns: Vec<TownInstance>,
         days_without_castle: i8,
+    }
+
+    #[derive(Debug, Clone)]
+    struct RBattleSide {
+        color: String,
+        hero: RHero,
+    }
+
+    #[derive(Debug, Clone)]
+    struct RBattleInfo {
+        stacks: Vec<RStack>,
+        sides: [RBattleSide; 2],
+        round: i32,
+        active_stack: i32,
+        terrain_type: RTerrain,
     }
 
     extern "Rust" {
@@ -346,6 +415,10 @@ mod ffi {
 
     extern "Rust" {
         fn save_game_state(day: u32, current_player: String, players: Vec<RPlayerState>) -> i32;
+    }
+
+    extern "Rust" {
+        fn simulate_battle_onchain(battle_info: &mut RBattleInfo) -> i32;
     }
 
     // TODO! Try to understand how to include C++ header file
@@ -392,8 +465,8 @@ impl From<ffi::RPlayerState> for PlayerState {
     }
 }
 
-impl From<ffi::HeroInstance> for Hero {
-    fn from(value: ffi::HeroInstance) -> Self {
+impl From<ffi::RHero> for Hero {
+    fn from(value: ffi::RHero) -> Self {
         let secondary_skills = value
             .secondary_skills
             .into_iter()
@@ -403,9 +476,40 @@ impl From<ffi::HeroInstance> for Hero {
         for (i, stack) in value.stacks.iter().enumerate() {
             stacks[i] = if stack.count == 0 {
                 None
-            }else {
+            } else {
                 Some(stack.into())
             };
+        }
+        Self {
+            name: value.name,
+            level: value.level,
+            mana: value.mana,
+            sex: value.sex,
+            experience_points: value.experience_points,
+            secondary_skills,
+            stacks,
+        }
+    }
+}
+
+impl From<Hero> for ffi::RHero {
+    fn from(value: Hero) -> Self {
+        let secondary_skills = value
+            .secondary_skills
+            .into_iter()
+            .map(|skill| skill.into())
+            .collect();
+        let mut stacks: [ffi::RStack; 7] = Default::default();
+        for (i, stack) in value.stacks.iter().enumerate() {
+            match stack {
+                Some(stack) => {
+                    let s: ffi::RStack = stack.into();
+                    stacks[i] = s;
+                }
+                None => {
+                    stacks[i] = Default::default();
+                }
+            }
         }
         Self {
             name: value.name,
@@ -428,8 +532,27 @@ impl From<ffi::SecondarySkillInfo> for SecondarySkillInfo {
     }
 }
 
+impl From<SecondarySkillInfo> for ffi::SecondarySkillInfo {
+    fn from(value: SecondarySkillInfo) -> Self {
+        Self {
+            value: value.value,
+            skill: value.skill.into(),
+        }
+    }
+}
+
 impl From<&ffi::RStack> for Stack {
     fn from(value: &ffi::RStack) -> Self {
+        Self {
+            name: value.name.clone(),
+            level: value.level,
+            count: value.count,
+        }
+    }
+}
+
+impl From<&Stack> for ffi::RStack {
+    fn from(value: &Stack) -> Self {
         Self {
             name: value.name.clone(),
             level: value.level,
@@ -482,6 +605,44 @@ impl From<ffi::RSecondarySkill> for SecondarySkill {
     }
 }
 
+impl From<SecondarySkill> for ffi::RSecondarySkill {
+    fn from(value: SecondarySkill) -> Self {
+        match value {
+            SecondarySkill::Wrong => Self::WRONG,
+            SecondarySkill::Default => Self::DEFAULT,
+            SecondarySkill::Pathfinding => Self::PATHFINDING,
+            SecondarySkill::Archery => Self::ARCHERY,
+            SecondarySkill::Logistics => Self::LOGISTICS,
+            SecondarySkill::Scouting => Self::SCOUTING,
+            SecondarySkill::Diplomacy => Self::DIPLOMACY,
+            SecondarySkill::Navigation => Self::NAVIGATION,
+            SecondarySkill::Leadership => Self::LEADERSHIP,
+            SecondarySkill::Wisdom => Self::WISDOM,
+            SecondarySkill::Mysticism => Self::MYSTICISM,
+            SecondarySkill::Luck => Self::LUCK,
+            SecondarySkill::Ballistics => Self::BALLISTICS,
+            SecondarySkill::EagleEye => Self::EAGLE_EYE,
+            SecondarySkill::Necromancy => Self::NECROMANCY,
+            SecondarySkill::Estates => Self::ESTATES,
+            SecondarySkill::FireMagic => Self::FIRE_MAGIC,
+            SecondarySkill::AirMagic => Self::AIR_MAGIC,
+            SecondarySkill::WaterMagic => Self::WATER_MAGIC,
+            SecondarySkill::EarthMagic => Self::EARTH_MAGIC,
+            SecondarySkill::Scholar => Self::SCHOLAR,
+            SecondarySkill::Tactics => Self::TACTICS,
+            SecondarySkill::Artillery => Self::ARTILLERY,
+            SecondarySkill::Learning => Self::LEARNING,
+            SecondarySkill::Offence => Self::OFFENCE,
+            SecondarySkill::Armorer => Self::ARMORER,
+            SecondarySkill::Intelligence => Self::INTELLIGENCE,
+            SecondarySkill::Sorcery => Self::SORCERY,
+            SecondarySkill::Resistance => Self::RESISTANCE,
+            SecondarySkill::FirstAid => Self::FIRST_AID,
+            SecondarySkill::SkillSize => Self::SKILL_SIZE,
+        }
+    }
+}
+
 impl From<ffi::TownInstance> for Town {
     fn from(value: ffi::TownInstance) -> Self {
         Self {
@@ -513,6 +674,88 @@ impl From<ffi::RHallLevel> for HallLevel {
             ffi::RHallLevel::City => Self::City,
             ffi::RHallLevel::Capitol => Self::Capitol,
             _ => Self::None,
+        }
+    }
+}
+
+impl From<ffi::RBattleInfo> for BattleInfo {
+    fn from(value: ffi::RBattleInfo) -> Self {
+        let stacks = value
+            .stacks
+            .into_iter()
+            .map(|stack| (&stack).into())
+            .collect();
+        let side1 = (&value.sides[0]).into();
+        let side2 = (&value.sides[1]).into();
+        let sides = [side1, side2];
+        Self {
+            stacks,
+            sides,
+            round: value.round,
+            active_stack: value.active_stack,
+            terrain_type: value.terrain_type.into(),
+        }
+    }
+}
+
+impl From<ffi::RTerrain> for Terrain {
+    fn from(value: ffi::RTerrain) -> Self {
+        match value {
+            NATIVE_TERRAIN => Terrain::NativeTerrain,
+            ANY_TERRAIN => Terrain::AnyTerrain,
+            NONE => Terrain::None,
+            FIRST_REGULAR_TERRAIN => Terrain::FirstRegularTerrain,
+            DIRT => Terrain::Dirt,
+            SAND => Terrain::Sand,
+            GRASS => Terrain::Grass,
+            SNOW => Terrain::Snow,
+            SWAMP => Terrain::Swamp,
+            ROUGH => Terrain::Rough,
+            SUBTERRANEAN => Terrain::Subterranean,
+            LAVA => Terrain::Lava,
+            WATER => Terrain::Water,
+            ROCK => Terrain::Rock,
+            ORIGINAL_REGULAR_TERRAIN_COUNT => Terrain::OriginalRegularTerrainCount,
+        }
+    }
+}
+
+impl From<Terrain> for ffi::RTerrain {
+    fn from(value: Terrain) -> Self {
+        match value {
+            Terrain::NativeTerrain => ffi::RTerrain::NATIVE_TERRAIN,
+            Terrain::AnyTerrain => ffi::RTerrain::ANY_TERRAIN,
+            Terrain::None => ffi::RTerrain::NONE,
+            Terrain::FirstRegularTerrain => ffi::RTerrain::FIRST_REGULAR_TERRAIN,
+            Terrain::Dirt => ffi::RTerrain::DIRT,
+            Terrain::Sand => ffi::RTerrain::SAND,
+            Terrain::Grass => ffi::RTerrain::GRASS,
+            Terrain::Snow => ffi::RTerrain::SNOW,
+            Terrain::Swamp => ffi::RTerrain::SWAMP,
+            Terrain::Rough => ffi::RTerrain::ROUGH,
+            Terrain::Subterranean => ffi::RTerrain::SUBTERRANEAN,
+            Terrain::Lava => ffi::RTerrain::LAVA,
+            Terrain::Water => ffi::RTerrain::WATER,
+            Terrain::Rock => ffi::RTerrain::ROCK,
+            Terrain::OriginalRegularTerrainCount => ffi::RTerrain::ORIGINAL_REGULAR_TERRAIN_COUNT,
+        }
+    }
+}
+
+impl From<&ffi::RBattleSide> for BattleSide {
+    fn from(value: &ffi::RBattleSide) -> Self {
+        Self {
+            color: value.color.clone(),
+            hero: value.hero.clone().into(),
+        }
+    }
+}
+
+impl From<&BattleSide> for ffi::RBattleSide {
+    fn from(value: &BattleSide) -> Self {
+        Self {
+            color: value.color.clone(),
+            hero: value.hero.clone().into(),
         }
     }
 }

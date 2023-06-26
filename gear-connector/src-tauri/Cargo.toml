@@ -46,6 +46,7 @@ gsdk = { git = "https://github.com/gear-tech/gear.git", rev = "78dfa07" }
 gear-connector-api = { path = "../../gear-connector-api" }
 homm3-archive-io = { git = "https://github.com/gear-dapps/homm3" }
 homm3-gamestate-io = { git = "https://github.com/gear-dapps/homm3" }
+homm3-battle-io = { git = "https://github.com/gear-dapps/homm3" }
 
 [profile.release]
 panic = "abort"
