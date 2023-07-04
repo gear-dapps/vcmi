@@ -1,6 +1,3 @@
-#corrosion_import_crate(MANIFEST_PATH ../rust_vcmi/Cargo.toml PROFILE release)
-#corrosion_add_cxxbridge(rusty_bridge CRATE rust_vcmi MANIFEST_PATH ../rust_vcmi FILES lib.rs)
-
 set(client_SRCS
 	StdInc.cpp
 	../CCallback.cpp

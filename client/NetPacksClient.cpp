@@ -136,7 +136,7 @@ void ApplyClientNetPackVisitor::visitSetSecSkill(SetSecSkill & pack)
 void ApplyClientNetPackVisitor::visitHeroVisitCastle(HeroVisitCastle & pack)
 {
 	const CGHeroInstance *h = cl.getHero(pack.hid);
-	
+
 	if(pack.start())
 	{
 		callInterfaceIfPresent(cl, h->tempOwner, &IGameEventsReceiver::heroVisitsTown, h, gs.getTown(pack.tid));
@@ -292,7 +292,7 @@ void ApplyClientNetPackVisitor::visitBulkMoveArtifacts(BulkMoveArtifacts & pack)
 	};
 
 	// Begin a session of bulk movement of arts. It is not necessary but useful for the client optimization.
-	callInterfaceIfPresent(cl, cl.getCurrentPlayer(), &IGameEventsReceiver::bulkArtMovementStart, 
+	callInterfaceIfPresent(cl, cl.getCurrentPlayer(), &IGameEventsReceiver::bulkArtMovementStart,
 		pack.artsPack0.size() + pack.artsPack1.size());
 	applyMove(pack.artsPack0);
 	if(pack.swap)
@@ -377,7 +377,7 @@ void ApplyClientNetPackVisitor::visitPlayerReinitInterface(PlayerReinitInterface
 		callAllInterfaces(cl, &IGameEventsReceiver::playerStartsTurn, currentPlayer);
 		callOnlyThatInterface(cl, currentPlayer, &CGameInterface::yourTurn);
 	};
-	
+
 	for(auto player : pack.players)
 	{
 		auto & plSettings = CSH->si->getIthPlayersSettings(player);
@@ -845,7 +845,6 @@ void ApplyClientNetPackVisitor::visitYourTurn(YourTurn & pack)
 void ApplyClientNetPackVisitor::visitSaveGameClient(SaveGameClient & pack)
 {
 	const auto stem = FileInfo::GetPathStem(pack.fname);
-	auto s = stem.to_string();	
 	if(!CResourceHandler::get("local")->createResource(stem.to_string() + ".vcgm1"))
 	{
 		logNetwork->error("Failed to create resource %s", stem.to_string() + ".vcgm1");

@@ -1574,7 +1574,6 @@ void VCAI::battleStart(const CCreatureSet * army1, const CCreatureSet * army2, i
 {
 	NET_EVENT_HANDLER;
 	assert(playerID > PlayerColor::PLAYER_LIMIT || status.getBattle() == UPCOMING_BATTLE);
-	logGlobal->warn("AZOYAN VCAI::battleStar");
 	status.setBattle(ONGOING_BATTLE);
 	const CGObjectInstance * presumedEnemy = vstd::backOrNull(cb->getVisitableObjs(tile)); //may be nullptr in some very are cases -> eg. visited monolith and fighting with an enemy at the FoW covered exit
 	battlename = boost::str(boost::format("Starting battle of %s attacking %s at %s") % (hero1 ? hero1->getNameTranslated() : "a army") % (presumedEnemy ? presumedEnemy->getObjectName() : "unknown enemy") % tile.toString());
@@ -2875,5 +2874,3 @@ bool shouldVisit(HeroPtr h, const CGObjectInstance * obj)
 
 	return true;
 }
-
-

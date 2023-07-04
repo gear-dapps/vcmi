@@ -532,7 +532,7 @@ void AIGateway::initGameInterface(std::shared_ptr<Environment> env, std::shared_
 	myCb->unlockGsWhenWaiting = true;
 
 	nullkiller->init(CB, playerID);
-	
+
 	retrieveVisitableObjs();
 }
 
@@ -553,7 +553,7 @@ void AIGateway::heroGotLevel(const CGHeroInstance * hero, PrimarySkill::PrimaryS
 	HeroPtr hPtr = hero;
 
 	requestActionASAP([=]()
-	{ 
+	{
 		if(hPtr.validAndSet())
 		{
 			nullkiller->heroManager->update();
@@ -906,7 +906,7 @@ void AIGateway::pickBestCreatures(const CArmedInstance * destinationArmy, const 
 						&& (!destinationArmy->hasStackAtSlot(i) || destinationArmy->getCreature(i) == targetCreature))
 					{
 						auto weakest = nullkiller->armyManager->getWeakestCreature(bestArmy);
-						
+
 						if(weakest->creature == targetCreature)
 						{
 							if(1 == source->getStackCount(j))
@@ -1062,7 +1062,6 @@ void AIGateway::recruitCreatures(const CGDwelling * d, const CArmedInstance * re
 void AIGateway::battleStart(const CCreatureSet * army1, const CCreatureSet * army2, int3 tile, const CGHeroInstance * hero1, const CGHeroInstance * hero2, bool side)
 {
 	NET_EVENT_HANDLER;
-	logGlobal->warn("AZOYAN AIGateway::battleStar");
 	assert(playerID > PlayerColor::PLAYER_LIMIT || status.getBattle() == UPCOMING_BATTLE);
 	status.setBattle(ONGOING_BATTLE);
 	const CGObjectInstance * presumedEnemy = vstd::backOrNull(cb->getVisitableObjs(tile)); //may be nullptr in some very are cases -> eg. visited monolith and fighting with an enemy at the FoW covered exit

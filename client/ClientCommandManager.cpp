@@ -109,7 +109,6 @@ void ClientCommandManager::handleControlAi(const std::string &colorName)
 
 void ClientCommandManager::processCommand(const std::string &message, bool calledFromIngameConsole)
 {
-	logGlobal->debug("ClientCommandManager::processCommand message %s %d", message, calledFromIngameConsole);
 	std::istringstream singleWordBuffer;
 	singleWordBuffer.str(message);
 	std::string commandName;

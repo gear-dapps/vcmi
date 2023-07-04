@@ -162,7 +162,7 @@ BattleAction CBattleAI::activeStack( const CStack * stack )
 		}
 
 		HypotheticBattle hb(env.get(), cb);
-		
+
 		PotentialTargets targets(stack, hb);
 		BattleExchangeEvaluator scoreEvaluator(cb, env);
 		auto moveTarget = scoreEvaluator.findMoveTowardsUnreachable(stack, targets, hb);
@@ -780,8 +780,6 @@ void CBattleAI::evaluateCreatureSpellcast(const CStack * stack, PossibleSpellcas
 void CBattleAI::battleStart(const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, bool Side)
 {
 	LOG_TRACE(logAi);
-	logGlobal->warn("AZOYAN CBattleAI::battleStar");
-	
 	side = Side;
 }
 
@@ -797,7 +795,7 @@ boost::optional<BattleAction> CBattleAI::considerFleeingOrSurrendering()
 	bs.canFlee = cb->battleCanFlee();
 	bs.canSurrender = cb->battleCanSurrender(playerID);
 	bs.ourSide = cb->battleGetMySide();
-	bs.ourHero = cb->battleGetMyHero(); 
+	bs.ourHero = cb->battleGetMyHero();
 	bs.enemyHero = nullptr;
 
 	for(auto stack : cb->battleGetAllStacks(false))
@@ -830,6 +828,3 @@ boost::optional<BattleAction> CBattleAI::considerFleeingOrSurrendering()
 
 	return result;
 }
-
-
-
