@@ -190,7 +190,7 @@ set(CMAKE_XCODE_ATTRIBUTE_ONLY_ACTIVE_ARCH NO)
 set(CMAKE_XCODE_ATTRIBUTE_ONLY_ACTIVE_ARCH[variant=Debug] YES)
 
 #Check for endian
-if(${CMAKE_VERSION} VERSION_LESS "3.20.0") 
+if(${CMAKE_VERSION} VERSION_LESS "3.20.0")
 	include(TestBigEndian)
 	test_big_endian(VCMI_ENDIAN_BIG)
 	if(VCMI_ENDIAN_BIG)
@@ -400,11 +400,9 @@ if(NOT FORCE_BUNDLED_MINIZIP)
 	endif()
 endif()
 
-
 include(FetchContent)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS true)
-
 
 FetchContent_Declare(
     Corrosion
@@ -640,8 +638,8 @@ if(WIN32)
 		vcmi_install_conan_deps("\${CMAKE_INSTALL_PREFIX}")
 		file(GLOB dep_files
 				${dep_files}
-				"${CMAKE_SYSROOT}/bin/*.dll" 
-				"${CMAKE_SYSROOT}/lib/*.dll" 
+				"${CMAKE_SYSROOT}/bin/*.dll"
+				"${CMAKE_SYSROOT}/lib/*.dll"
 				"${CONAN_SYSTEM_LIBRARY_LOCATION}/*.dll")
 	else()
 		file(GLOB dep_files
@@ -672,8 +670,8 @@ if(WIN32)
 				DESTINATION ${BIN_DIR}/platforms
 			)
 			install(
-				FILES "$<TARGET_FILE:Qt${QT_VERSION_MAJOR}::QWindowsVistaStylePlugin>" 
-				DESTINATION ${BIN_DIR}/styles) 
+				FILES "$<TARGET_FILE:Qt${QT_VERSION_MAJOR}::QWindowsVistaStylePlugin>"
+				DESTINATION ${BIN_DIR}/styles)
 		endif()
 	endif()
 
