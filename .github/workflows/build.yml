@@ -54,7 +54,7 @@ jobs:
             cmake_args: -G Ninja
             preset: windows-mingw-conan-linux
             conan_profile: mingw64-linux.jinja
-            rust_toolchain: x86_64-pc-windows-gnu
+            rust_target: x86_64-pc-windows-gnu
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -66,10 +66,10 @@ jobs:
         submodules: recursive
 
     - name: Setup toolchain on Linux
-      if: matrix.rust_toolchain != ''
+      if: matrix.rust_target != ''
       uses: dtolnay/rust-toolchain@stable
       with:
-        toolchain: ${{ matrix.rust_toolchain }}
+        targets: ${{ matrix.rust_target }}
 
     - name: Dependencies
       run: source '${{github.workspace}}/CI/${{matrix.platform}}/before_install.sh'
