@@ -41,6 +41,7 @@ jobs:
             conan_options: --options with_apple_system_libs=True
             artifact_platform: arm
             rust_target: aarch64-apple-darwin
+            corrosion_args: -DRust_CARGO_TARGET=aarch64-apple-darwin
           - platform: msvc
             os: windows-latest
             # test: 0
@@ -57,6 +58,8 @@ jobs:
             preset: windows-mingw-conan-linux
             conan_profile: mingw64-linux.jinja
             rust_target: x86_64-pc-windows-gnu
+            corrosion_args: -DRust_CARGO_TARGET=x86_64-pc-windows-gnu
+
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -117,8 +120,7 @@ jobs:
         restore-keys: ${{ matrix.preset }}-build
 
     - name: CMake Preset
-      run: |
-        cmake --preset ${{ matrix.preset }}
+      run: cmake --preset ${{ matrix.preset }} ${{ matrix.corrosion_args }}}
 
     - name: Build Preset
       run: cmake --build --preset ${{matrix.preset}}
