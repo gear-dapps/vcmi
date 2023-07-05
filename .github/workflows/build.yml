@@ -95,10 +95,6 @@ jobs:
       env:
         GENERATE_ONLY_BUILT_CONFIG: 1
 
-    # - name: Git branch name
-    #   id: git-branch-name
-    #   uses: EthanSK/git-branch-name-action@v1
-
     - name: Build Number
       run: |
         source '${{github.workspace}}/CI/get_package_name.sh'
@@ -116,13 +112,14 @@ jobs:
         cmake --preset ${{ matrix.preset }}
 
     - name: Build Preset
-      run: |
-        cmake --build --preset ${{matrix.preset}}
+      run: cmake --build --preset ${{matrix.preset}}
 
     - name: Test
       if: ${{ matrix.test == 1 }}
-      run: |
-        ctest --preset ${{matrix.preset}}
+      run: ctest --preset ${{matrix.preset}}
+
+    - name: List artifacts
+      run: ls -la '${{github.workspace}}/out/build/${{matrix.preset}}'
 
     - name: Pack
       id: cpack
