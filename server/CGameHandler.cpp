@@ -908,8 +908,8 @@ void CGameHandler::endBattle(int3 tile, const CGHeroInstance * heroAttacker, con
 		sendAndApply(&ro);
 	}
 
-	if(battleResult.data->winner == BattleSide::DEFENDER 
-		&& heroDefender 
+	if(battleResult.data->winner == BattleSide::DEFENDER
+		&& heroDefender
 		&& heroDefender->visitedTown
 		&& !heroDefender->inTownGarrison
 		&& heroDefender->visitedTown->garrisonHero == heroDefender)
@@ -1331,14 +1331,14 @@ void CGameHandler::handleClientDisconnection(std::shared_ptr<CConnection> c)
 {
 	if(lobby->state == EServerState::SHUTDOWN || !gs || !gs->scenarioOps)
 		return;
-	
+
 	for(auto & playerConnections : connections)
 	{
 		PlayerColor playerId = playerConnections.first;
 		auto * playerSettings = gs->scenarioOps->getPlayersSettings(playerId.getNum());
 		if(!playerSettings)
 			continue;
-		
+
 		auto playerConnection = vstd::find(playerConnections.second, c);
 		if(playerConnection != playerConnections.second.end())
 		{
@@ -2259,7 +2259,7 @@ std::list<PlayerColor> CGameHandler::generatePlayerTurnOrder() const
 void CGameHandler::setupBattle(int3 tile, const CArmedInstance *armies[2], const CGHeroInstance *heroes[2], bool creatureBank, const CGTownInstance *town)
 {
 	battleResult.set(nullptr);
-	logGlobal->warn("AZOYAN CGameHandler::setupBattle");
+
 	const auto & t = *getTile(tile);
 	TerrainId terrain = t.terType->getId();
 	if (gs->map->isCoastalTile(tile)) //coastal tile is always ground
@@ -4118,7 +4118,7 @@ bool CGameHandler::assembleArtifacts (ObjectInstanceID heroID, ArtifactPosition 
 		if(!vstd::contains(destArtifact->assemblyPossibilities(hero, combineEquipped), combinedArt))
 			COMPLAIN_RET("assembleArtifacts: It's impossible to assemble requested artifact!");
 
-		
+
 		if(ArtifactUtils::checkSpellbookIsNeeded(hero, assembleTo, artifactSlot))
 			giveHeroNewArtifact(hero, VLC->arth->objects[ArtifactID::SPELLBOOK], ArtifactPosition::SPELLBOOK);
 
@@ -4977,7 +4977,7 @@ bool CGameHandler::makeBattleAction(BattleAction &ba)
 void CGameHandler::playerMessage(PlayerColor player, const std::string &message, ObjectInstanceID currObj)
 {
 	bool cheated = false;
-	
+
 	if(!getPlayerSettings(player)->isControlledByAI())
 	{
 		PlayerMessageClient temp_message(player, message);
@@ -4986,12 +4986,12 @@ void CGameHandler::playerMessage(PlayerColor player, const std::string &message,
 
 	std::vector<std::string> words;
 	boost::split(words, message, boost::is_any_of(" "));
-	
+
 	bool isHost = false;
 	for(auto & c : connections[player])
 		if(lobby->isClientHost(c->connectionID))
 			isHost = true;
-	
+
 	if(isHost && words.size() >= 2 && words[0] == "game")
 	{
 		if(words[1] == "exit" || words[1] == "quit" || words[1] == "end")
@@ -5022,7 +5022,7 @@ void CGameHandler::playerMessage(PlayerColor player, const std::string &message,
 						playerToKick = c.first;
 				}
 			}
-			
+
 			if(playerToKick != PlayerColor::CANNOT_DETERMINE)
 			{
 				PlayerCheated pc;
@@ -5034,7 +5034,7 @@ void CGameHandler::playerMessage(PlayerColor player, const std::string &message,
 			return;
 		}
 	}
-	
+
 	int obj = 0;
 	if (words.size() == 2 && words[0] != "vcmiexp" && words[0] != "vcmiolorin")
 	{
@@ -5410,7 +5410,7 @@ bool CGameHandler::handleDamageFromObstacle(const CStack * curStack, bool stackI
 
 	if(stackIsMoving)
 		return curStack->alive() && !movementStopped;
-	
+
 	return curStack->alive();
 }
 
@@ -6472,7 +6472,7 @@ void CGameHandler::runBattle()
 					rhero.mana = side.hero->mana;
 					rhero.sex = side.hero->sex;
 					rhero.name = side.hero->getNameTranslated();
-					
+
 					rside.hero = rhero;
 				}
 				rbattle.sides[i] = rside;

@@ -34,10 +34,10 @@ use tracing_core::LevelFilter;
 use tracing_subscriber::{prelude::*, Registry};
 use utils::MainWindowSubscriber;
 
-/// Запускаем vcmiclient совместно с gear-connector
-/// Когда пользователь выбирает многопользовательская игра, показываем Диалоговое окно с предложением подключиться к GEAR
-/// Если пользователь соглашается - подключаемся, уменьшаем размер окна, показываем статус подключения
-/// Если отказывается - закрываем диалоговое окно
+/// We start vcmiclient together with gear-connector.
+/// When user chooses multiplayer game, we show dialog with offer to connect to GEAR.
+/// If user agrees - we connect, minimize window, show connection status.
+/// If user declines - close dialog.
 // gui  <-> connector
 // vcmi <-> connector -> gear
 
