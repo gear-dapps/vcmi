@@ -11,19 +11,20 @@ env:
 jobs:
   build:
     strategy:
+      fail-fast: false # TODO: remove when all platforms are supported
       matrix:
         include:
           - platform: linux-qt6
             os: ubuntu-22.04
-            test: 0
+            # test: 0
             preset: linux-clang-release
           - platform: linux
             os: ubuntu-20.04
-            test: 0
+            # test: 0
             preset: linux-gcc-release
           - platform: mac-intel
             os: macos-12
-            test: 0
+            # test: 0
             pack: 1
             extension: dmg
             preset: macos-conan-ninja-release
@@ -32,22 +33,23 @@ jobs:
             artifact_platform: intel
           - platform: mac-arm
             os: macos-12
-            test: 0
+            # test: 0
             pack: 1
             extension: dmg
             preset: macos-arm-conan-ninja-release
             conan_profile: macos-arm
             conan_options: --options with_apple_system_libs=True
             artifact_platform: arm
+            rust_target: aarch64-apple-darwin
           - platform: msvc
             os: windows-latest
-            test: 0
+            # test: 0
             pack: 1
             extension: exe
             preset: windows-msvc-release
           - platform: mingw-ubuntu
             os: ubuntu-22.04
-            test: 0
+            # test: 0
             pack: 1
             extension: exe
             cpack_args: -D CPACK_NSIS_EXECUTABLE=`which makensis`
@@ -65,7 +67,7 @@ jobs:
       with:
         submodules: recursive
 
-    - name: Setup toolchain on Linux
+    - name: Setup Rust toolchain
       if: matrix.rust_target != ''
       uses: dtolnay/rust-toolchain@stable
       with:
@@ -107,6 +109,13 @@ jobs:
       env:
         PULL_REQUEST: ${{ github.event.pull_request.number }}
 
+    - name: Cache build
+      uses: actions/cache@v3
+      with:
+        path: ${{github.workspace}}/out/build/${{matrix.preset}}
+        key: ${{ matrix.preset }}-build
+        restore-keys: ${{ matrix.preset }}-build
+
     - name: CMake Preset
       run: |
         cmake --preset ${{ matrix.preset }}
@@ -114,9 +123,9 @@ jobs:
     - name: Build Preset
       run: cmake --build --preset ${{matrix.preset}}
 
-    - name: Test
-      if: ${{ matrix.test == 1 }}
-      run: ctest --preset ${{matrix.preset}}
+    # - name: Test
+    #   if: ${{ matrix.test == 1 }}
+    #   run: ctest --preset ${{matrix.preset}}
 
     - name: List artifacts
       run: ls -la '${{github.workspace}}/out/build/${{matrix.preset}}'
