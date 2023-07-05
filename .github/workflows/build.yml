@@ -120,7 +120,7 @@ jobs:
         restore-keys: ${{ matrix.preset }}-build
 
     - name: CMake Preset
-      run: cmake --preset ${{ matrix.preset }} ${{ matrix.corrosion_args }}}
+      run: cmake --preset ${{ matrix.preset }} ${{ matrix.corrosion_args }}
 
     - name: Build Preset
       run: cmake --build --preset ${{matrix.preset}}
