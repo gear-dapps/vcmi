@@ -13,21 +13,23 @@ env:
 jobs:
   build:
     strategy:
-      fail-fast: false # FIXME: Remove this line after debugging
       matrix:
         include:
           - platform: linux-qt6
             os: ubuntu-22.04
             preset: linux-clang-release
+
           - platform: linux
             os: ubuntu-20.04
             preset: linux-gcc-release
+
           - platform: mac-intel
             os: macos-12
             preset: macos-conan-ninja-release
             conan_profile: macos-intel
             conan_options: --options with_apple_system_libs=True
             artifact_platform: intel
+
           - platform: mac-arm
             os: macos-12
             preset: macos-arm-conan-ninja-release
@@ -35,10 +37,12 @@ jobs:
             conan_options: --options with_apple_system_libs=True
             artifact_platform: arm
             rust_target: aarch64-apple-darwin
+
           - platform: msvc
             os: windows-latest
             suffix: .exe
             preset: windows-msvc-release
+
           - platform: mingw-ubuntu
             os: ubuntu-22.04
             suffix: .exe
@@ -100,7 +104,7 @@ jobs:
     - name: Cache build
       uses: actions/cache@v3
       with:
-        path: out/build/${{matrix.preset}}
+        path: out/build/${{ matrix.preset }}
         key: ${{ matrix.preset }}-build
         restore-keys: ${{ matrix.preset }}-build
 
@@ -108,16 +112,7 @@ jobs:
       run: cmake --preset ${{ matrix.preset }} ${{ env.cmakeTargetFlag }}
 
     - name: Build Preset
-      if: false # FIXME: Remove this line after debugging
-      run: cmake --build --preset ${{matrix.preset}}
-
-    - name: Mock artifacts
-      run: |
-        mkdir -p 'out/build/${{matrix.preset}}/bin/AI'
-        touch 'out/build/${{matrix.preset}}/bin/vcmiclient'
-        touch 'out/build/${{matrix.preset}}/bin/vcmiserver'
-        touch 'out/build/${{matrix.preset}}/bin/vcmilauncher'
-        touch 'out/build/${{matrix.preset}}/bin/AI/libvcmi_ai.so'
+      run: cmake --build --preset ${{ matrix.preset }}
 
     - name: Cache
       uses: Swatinem/rust-cache@v2
@@ -125,12 +120,12 @@ jobs:
         workspaces: |
           gear-connector/src-tauri -> gear-connector/src-tauri/target
 
-    # - name: Build gear-connector
-    #   if: "${{ !startsWith(matrix.preset, 'windows') }}" # TODO: Fix build on Windows
-    #   run: |
-    #     cargo b -r --manifest-path gear-connector/src-tauri/Cargo.toml ${{ env.cargoTargetFlag }}
-    #     cp -vf gear-connector/src-tauri/target/${{ env.targetSubfolder}}release/gear-connector out/build/${{ matrix.preset }}/bin/
-    #     strip out/build/${{ matrix.preset }}/bin/gear-connector || true
+    - name: Build gear-connector
+      if: "${{ !startsWith(matrix.preset, 'windows') }}" # TODO: Fix build on Windows
+      run: |
+        cargo b -r --manifest-path gear-connector/src-tauri/Cargo.toml ${{ env.cargoTargetFlag }}
+        cp -vf gear-connector/src-tauri/target/${{ env.targetSubfolder}}release/gear-connector out/build/${{ matrix.preset }}/bin/
+        strip out/build/${{ matrix.preset }}/bin/gear-connector || true
 
     - name: List artifacts
       run: ls -la out/build/${{matrix.preset}}/bin
@@ -141,7 +136,7 @@ jobs:
         tar -cvJf ../../../../${{ matrix.platform }}.tar.xz *
 
     - name: Upload artifact
-      # if: github.event_name == 'push' # FIXME: Uncomment this line after debugging
+      if: github.event_name == 'push'
       uses: actions/upload-artifact@v3
       with:
         if-no-files-found: ignore # TODO: Remove this line after debugging
@@ -151,7 +146,7 @@ jobs:
     name: Deploy binaries
     needs: build
     runs-on: ubuntu-latest
-    # if: github.event_name == 'push' # FIXME: Uncomment this line after debugging
+    if: github.event_name == 'push'
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@v3
@@ -160,7 +155,7 @@ jobs:
         run: ls -la artifact
 
       - name: Delete previous release
-        if: "${{ !startsWith(github.ref, 'refs/tags/v') }}"
+        if: "${{ !startsWith(github.ref, 'refs/tags') }}"
         uses: dev-drprasad/delete-tag-and-release@v1.0.1
         with:
           delete_release: true
@@ -169,7 +164,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload master
-        if: "${{ !startsWith(github.ref, 'refs/tags/v') }}"
+        if: "${{ !startsWith(github.ref, 'refs/tags') }}"
         uses: softprops/action-gh-release@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -179,7 +174,7 @@ jobs:
           files: artifact/**
 
       - name: Upload tag
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags')
         uses: softprops/action-gh-release@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
