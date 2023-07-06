@@ -131,6 +131,7 @@ jobs:
       run: ls -la out/build/${{matrix.preset}}/bin
 
     - name: Pack
+      if: github.event_name == 'push'
       run: |
         cd out/build/${{ matrix.preset }}/bin
         tar -cvJf ../../../../${{ matrix.platform }}.tar.xz *
