@@ -126,7 +126,7 @@ jobs:
           gear-connector/src-tauri -> gear-connector/src-tauri/target
 
     - name: Build gear-connector
-      if: "{{ !startsWith(matrix.preset, 'windows') }}" # TODO: Fix build on Windows
+      if: "${{ !startsWith(matrix.preset, 'windows') }}" # TODO: Fix build on Windows
       run: |
         cargo b -r --manifest-path gear-connector/src-tauri/Cargo.toml ${{ env.cargoTargetFlag }}
         cp -vf gear-connector/src-tauri/target/${{ env.targetSubfolder}}release/gear-connector out/build/${{ matrix.preset }}/bin/
