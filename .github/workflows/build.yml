@@ -11,6 +11,7 @@ env:
 jobs:
   build:
     strategy:
+      fail-fast: false # FIXME: Remove this line after debugging
       matrix:
         include:
           - platform: linux-qt6
@@ -63,7 +64,7 @@ jobs:
     steps:
     - name: Configure target flags
       if: matrix.rust_target != ''
-      run:
+      run: |
         echo "cargoTargetFlag='--target ${{  matrix.rust_target }}'" >> $GITHUB_ENV
         echo "cmakeTargetFlag='-DRust_CARGO_TARGET=${{  matrix.rust_target }}'" >> $GITHUB_ENV
 
