@@ -3,10 +3,12 @@ name: Build
 on:
   push:
     branches: [master]
+    tags: ['*']
   pull_request:
 
 env:
   BUILD_TYPE: Release
+  CARGO_TERM_COLOR: always
 
 jobs:
   build:
@@ -22,16 +24,12 @@ jobs:
             preset: linux-gcc-release
           - platform: mac-intel
             os: macos-12
-            # pack: 1
-            # extension: dmg
             preset: macos-conan-ninja-release
             conan_profile: macos-intel
             conan_options: --options with_apple_system_libs=True
             artifact_platform: intel
           - platform: mac-arm
             os: macos-12
-            # pack: 1
-            # extension: dmg
             preset: macos-arm-conan-ninja-release
             conan_profile: macos-arm
             conan_options: --options with_apple_system_libs=True
@@ -39,14 +37,10 @@ jobs:
             rust_target: aarch64-apple-darwin
           - platform: msvc
             os: windows-latest
-            # pack: 1
-            # extension: exe
             suffix: .exe
             preset: windows-msvc-release
           - platform: mingw-ubuntu
             os: ubuntu-22.04
-            # pack: 1
-            # extension: exe
             suffix: .exe
             cpack_args: -D CPACK_NSIS_EXECUTABLE=`which makensis`
             cmake_args: -G Ninja
@@ -84,7 +78,7 @@ jobs:
         VCMI_BUILD_PLATFORM: x64
 
     - uses: actions/setup-python@v4
-      if: "${{ matrix.conan_profile != '' }}"
+      if: matrix.conan_profile != ''
       with:
         python-version: '3.10'
 
@@ -102,18 +96,6 @@ jobs:
           ${{ matrix.conan_options }}
       env:
         GENERATE_ONLY_BUILT_CONFIG: 1
-
-    # - name: Build Number
-    #   run: |
-    #     source '${{github.workspace}}/CI/get_package_name.sh'
-    #     if [ '${{ matrix.artifact_platform }}' ]; then
-    #       VCMI_PACKAGE_FILE_NAME+="-${{ matrix.artifact_platform }}"
-    #     fi
-    #     echo VCMI_PACKAGE_FILE_NAME="$VCMI_PACKAGE_FILE_NAME" >> $GITHUB_ENV
-    #     echo VCMI_PACKAGE_NAME_SUFFIX="$VCMI_PACKAGE_NAME_SUFFIX" >> $GITHUB_ENV
-    #     echo VCMI_PACKAGE_GITVERSION="$VCMI_PACKAGE_GITVERSION" >> $GITHUB_ENV
-    #   env:
-    #     PULL_REQUEST: ${{ github.event.pull_request.number }}
 
     - name: Cache build
       uses: actions/cache@v3
@@ -156,39 +138,20 @@ jobs:
     - name: Pack
       run: |
         cd out/build/${{ matrix.preset }}/bin
-        tar -cvJf ../../../../${{ matrix.preset }}.tar.xz *
+        tar -cvJf ../../../../${{ matrix.platform }}.tar.xz *
 
     - name: Upload artifact
-      # if: github.event_name != 'pull_request' # FIXME: Uncomment this line after debugging
+      # if: github.event_name == 'push' # FIXME: Uncomment this line after debugging
       uses: actions/upload-artifact@v3
       with:
         if-no-files-found: ignore # TODO: Remove this line after debugging
-        path: ${{ matrix.preset }}.tar.xz
-
-    # - name: Pack
-    #   id: cpack
-    #   if: ${{ matrix.pack == 1 }}
-    #   run: |
-    #     cd '${{github.workspace}}/out/build/${{matrix.preset}}'
-    #     CPACK_PATH=`which -a cpack | grep -m1 -v -i chocolatey`
-    #     "$CPACK_PATH" -C ${{env.BUILD_TYPE}} ${{ matrix.cpack_args }}
-    #     test -f '${{github.workspace}}/CI/${{matrix.platform}}/post_pack.sh' \
-    #       && '${{github.workspace}}/CI/${{matrix.platform}}/post_pack.sh' '${{github.workspace}}' "$(ls '${{ env.VCMI_PACKAGE_FILE_NAME }}'.*)"
-    #     rm -rf _CPack_Packages
-
-    # - name: Artifacts
-    #   if: ${{ matrix.pack == 1 }}
-    #   uses: actions/upload-artifact@v3
-    #   with:
-    #     name: ${{ env.VCMI_PACKAGE_FILE_NAME }} - ${{ matrix.platform }}
-    #     path: |
-    #       ${{github.workspace}}/out/build/${{matrix.preset}}/${{ env.VCMI_PACKAGE_FILE_NAME }}.${{ matrix.extension }}
+        path: ${{ matrix.platform }}.tar.xz
 
   deploy:
     name: Deploy binaries
     needs: build
     runs-on: ubuntu-latest
-    # if: github.event_name != 'pull_request' # FIXME: Uncomment this line after debugging
+    # if: github.event_name == 'push' # FIXME: Uncomment this line after debugging
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@v3
@@ -197,6 +160,7 @@ jobs:
         run: ls -la artifact
 
       - name: Delete previous release
+        if: !startsWith(github.ref, 'refs/tags/v')
         uses: dev-drprasad/delete-tag-and-release@v1.0.1
         with:
           delete_release: true
@@ -204,11 +168,19 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload
+      - name: Upload master
+        if: !startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           prerelease: true
           tag_name: build
           draft: false
+          files: artifact/**
+
+      - name: Upload tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           files: artifact/**
