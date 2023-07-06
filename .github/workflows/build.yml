@@ -65,8 +65,8 @@ jobs:
     - name: Configure target flags
       if: matrix.rust_target != ''
       run: |
-        echo "cargoTargetFlag='--target ${{  matrix.rust_target }}'" >> $GITHUB_ENV
-        echo "cmakeTargetFlag='-DRust_CARGO_TARGET=${{  matrix.rust_target }}'" >> $GITHUB_ENV
+        echo "cargoTargetFlag=--target=${{  matrix.rust_target }}" >> $GITHUB_ENV
+        echo "cmakeTargetFlag=-DRust_CARGO_TARGET=${{  matrix.rust_target }}" >> $GITHUB_ENV
 
     - uses: actions/checkout@v3
       with:
