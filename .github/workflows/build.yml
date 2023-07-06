@@ -140,9 +140,16 @@ jobs:
         touch 'out/build/${{matrix.preset}}/bin/AI/libvcmi_ai.so'
         touch 'out/build/${{matrix.preset}}/bin/AI/vcmi_ai.dll'
 
+    - name: Cache
+      uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: |
+          gear-connector/src-tauri -> gear-connector/src-tauri/target
+
     - name: Build gear-connector
       run: |
         cargo b -r --manifest-path gear-connector/src-tauri/Cargo.toml ${{ env.cargoTargetFlag }}
+        strip gear-connector/src-tauri/target/release/gear-connector${{ matrix.suffix }} || true
         cp -vf gear-connector/src-tauri/target/release/gear-connector${{ matrix.suffix }} out/build/${{matrix.preset}}/bin/
 
     - name: List artifacts
@@ -154,6 +161,11 @@ jobs:
         cd 'out/build/${{ matrix.preset }}/bin'
         tar -cvJf ../../../${{ matrix.preset }}.tar.xz *
 
+    - name: Upload artifact
+      # if: github.event_name != 'pull_request' # FIXME: Uncomment this line after debugging
+      uses: actions/upload-artifact@v3
+      with:
+        path: ${{ matrix.preset }}.tar.xz
 
     # - name: Pack
     #   id: cpack
@@ -173,3 +185,32 @@ jobs:
     #     name: ${{ env.VCMI_PACKAGE_FILE_NAME }} - ${{ matrix.platform }}
     #     path: |
     #       ${{github.workspace}}/out/build/${{matrix.preset}}/${{ env.VCMI_PACKAGE_FILE_NAME }}.${{ matrix.extension }}
+
+  deploy:
+    name: Deploy binaries
+    needs: build
+    runs-on: ubuntu-latest
+    # if: github.event_name != 'pull_request' # FIXME: Uncomment this line after debugging
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+
+      - name: List artifacts
+        run: ls -la artifact
+
+      - name: Delete previous release
+        uses: dev-drprasad/delete-tag-and-release@v1.0.1
+        with:
+          delete_release: true
+          tag_name: build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload
+        uses: softprops/action-gh-release@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          prerelease: true
+          tag_name: build
+          draft: false
+          files: artifact/**
