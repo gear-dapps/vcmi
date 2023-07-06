@@ -10,4 +10,4 @@ sudo apt-get install ninja-build zlib1g-dev libavformat-dev libswscale-dev libtb
 # Optional dependencies
 sudo apt-get install libminizip-dev libfuzzylite-dev
 # `gear-connector` dependencies
-sudo apt-get install libgtk-3-dev libsoup2.4-dev
+sudo apt-get install javascriptcoregtk-4.1 libgtk-3-dev libsoup2.4-dev webkit2gtk-4.1
