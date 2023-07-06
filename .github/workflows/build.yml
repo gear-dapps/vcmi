@@ -155,7 +155,6 @@ jobs:
 
     - name: Pack
       run: |
-        mkdir -p artifact
         cd 'out/build/${{ matrix.preset }}/bin'
         tar -cvJf ../../../${{ matrix.preset }}.tar.xz *
 
@@ -163,6 +162,7 @@ jobs:
       # if: github.event_name != 'pull_request' # FIXME: Uncomment this line after debugging
       uses: actions/upload-artifact@v3
       with:
+        if-no-files-found: ignore # TODO: Remove this line after debugging
         path: ${{ matrix.preset }}.tar.xz
 
     # - name: Pack
