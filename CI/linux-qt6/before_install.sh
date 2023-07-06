@@ -9,5 +9,5 @@ sudo apt-get install qt6-base-dev qt6-base-dev-tools qt6-tools-dev qt6-tools-dev
 sudo apt-get install ninja-build zlib1g-dev libavformat-dev libswscale-dev libtbb-dev libluajit-5.1-dev
 # Optional dependencies
 sudo apt-get install libminizip-dev libfuzzylite-dev
-# GTK 3
-sudo apt-get install libgtk-3-dev
+# `gear-connector` dependencies
+sudo apt-get install libgtk-3-dev libsoup2.4-dev
