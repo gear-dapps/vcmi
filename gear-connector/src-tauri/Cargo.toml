@@ -1,16 +1,11 @@
 [package]
 name = "gear-connector"
 version = "0.0.0"
-description = "A Tauri App"
-authors = ["you"]
-license = ""
-repository = ""
+description = "Gear Connector App"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [build-dependencies]
-tauri-build = { version = "1.2", features = [] }
+tauri-build = "1.2"
 
 [dependencies]
 tauri = { version = "1.2", features = ["http-all", "shell-open", "window-start-dragging"] }
@@ -36,17 +31,17 @@ ipfs-api-backend-hyper = "0.6"
 fork = "0.1.21"
 
 # gear related
-gmeta = { git = "https://github.com/gear-tech/gear.git", rev = "78dfa07" }
-gstd = { git = "https://github.com/gear-tech/gear.git", features = ["debug"], rev = "78dfa07" }
+gmeta = { git = "https://github.com/gear-tech/gear.git", rev = "946ac47" }
+gstd = { git = "https://github.com/gear-tech/gear.git", features = ["debug"], rev = "946ac47" }
 scale-info = { version = "2", default-features = false }
 parity-scale-codec = { version = "3", default-features = false }
-gclient = { git = "https://github.com/gear-tech/gear.git", rev = "78dfa07" }
-gsdk = { git = "https://github.com/gear-tech/gear.git", rev = "78dfa07" }
+gclient = { git = "https://github.com/gear-tech/gear.git", rev = "946ac47" }
+gsdk = { git = "https://github.com/gear-tech/gear.git", rev = "946ac47" }
 
 gear-connector-api = { path = "../../gear-connector-api" }
-homm3-archive-io = { git = "https://github.com/gear-dapps/homm3" }
-homm3-gamestate-io = { git = "https://github.com/gear-dapps/homm3" }
-homm3-battle-io = { git = "https://github.com/gear-dapps/homm3" }
+homm3-archive-io = { git = "https://github.com/gear-foundation/dapps-homm3.git", branch = "update-deps" }
+homm3-gamestate-io = { git = "https://github.com/gear-foundation/dapps-homm3.git", branch = "update-deps" }
+homm3-battle-io = { git = "https://github.com/gear-foundation/dapps-homm3.git", branch = "update-deps" }
 
 [profile.release]
 panic = "abort"

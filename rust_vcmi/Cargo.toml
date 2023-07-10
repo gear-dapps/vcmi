@@ -1,11 +1,14 @@
 [package]
 name = "rust_vcmi"
 version = "0.1.0"
-edition = "2018"
+edition = "2021"
+
+[lib]
+crate-type = ["staticlib"]
 
 [dependencies]
-gmeta = { git = "https://github.com/gear-tech/gear.git", rev = "5c685d0f15c412ab6ee019ceaf7ce084426dfb68" }
-gstd = { git = "https://github.com/gear-tech/gear.git", rev = "5c685d0f15c412ab6ee019ceaf7ce084426dfb68" }
+gmeta = { git = "https://github.com/gear-tech/gear.git", rev = "946ac47" }
+gstd = { git = "https://github.com/gear-tech/gear.git", rev = "946ac47" }
 scale-info = { version = "2", default-features = false }
 parity-scale-codec = { version = "3", default-features = false }
 cxx = "1.0"
@@ -22,9 +25,6 @@ zip = "0.6"
 
 [build-dependencies]
 cxx-build = "1.0"
-
-[lib]
-crate-type = ["staticlib"]
 
 [profile.release]
 debug = true

@@ -75,7 +75,7 @@ Example for Ubuntu:
     libayatana-appindicator3-dev librsvg2-dev
 ```
 
-For Windows, macOS look at [official Tauri docs](https://tauri.app/v1/guides/getting-started/prerequisites)
+For Windows, macOS look at the [official Tauri docs](https://tauri.app/v1/guides/getting-started/prerequisites)
 
 For another Linux distribution look at https://tauri.app/v1/guides/getting-started/prerequisites#setting-up-linux
 
